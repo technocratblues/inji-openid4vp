@@ -83,7 +83,9 @@ abstract class ClientIdPrefixBasedAuthorizationRequestHandler(
 
     /// Validates the authenticity of the client identifier.
     /// For example, ensures that a client claiming to use a specific prefix is actually authorized or trusted.
-    open fun validateClientAuthenticity() {}
+    open fun validateClientAuthenticity() {
+        // Intentionally empty: subclasses can override this method when client authenticity validation is required.
+    }
 
     fun handle(): AuthorizationRequest {
         validateClientId()
