@@ -28,6 +28,8 @@ import java.security.spec.X509EncodedKeySpec
 
 private val className = PreRegisteredSchemeAuthorizationRequestHandler::class.simpleName!!
 
+private const val VERIFIER_NOT_TRUSTED = "Verifier is not trusted by the wallet"
+
 class PreRegisteredSchemeAuthorizationRequestHandler(
     clientId: String,
     specVersion: SpecVersion,
@@ -55,7 +57,7 @@ class PreRegisteredSchemeAuthorizationRequestHandler(
 
         if (walletConfig.trustedVerifiers.none { it.clientId == super.clientId }) {
             throw InvalidVerifier(
-                "Verifier is not trusted by the wallet",
+                VERIFIER_NOT_TRUSTED,
                 className
             )
         }
@@ -195,7 +197,7 @@ class PreRegisteredSchemeAuthorizationRequestHandler(
 
             if (!preRegisteredVerifier.responseUris.contains(responseUri)) {
                 throw InvalidVerifier(
-                    "Verifier is not trusted by the wallet",
+                    VERIFIER_NOT_TRUSTED,
                     className
                 )
             }
@@ -204,6 +206,6 @@ class PreRegisteredSchemeAuthorizationRequestHandler(
 
     private fun verifier(clientId: String): Verifier {
         return walletConfig.trustedVerifiers.find { it.clientId == clientId }
-            ?: throw InvalidVerifier("Verifier is not trusted by the wallet", className)
+            ?: throw InvalidVerifier(VERIFIER_NOT_TRUSTED, className)
     }
 }

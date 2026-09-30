@@ -72,18 +72,28 @@ data class CredentialQuery(
 
         if (format.isBlank()) {
             throw OpenID4VPExceptions.InvalidInput(
-                listOf("credential_query", "format"), null, CREDENTIAL_QUERY_CLASS_NAME
+                listOf("credential_query", "format"),
+                null,
+                CREDENTIAL_QUERY_CLASS_NAME
             )
         }
 
+        validateClaims()
+        validateClaimSets()
+    }
+
+    private fun validateClaims() {
         claims?.let { claimsList ->
             if (claimsList.isEmpty()) {
                 throw OpenID4VPExceptions.InvalidInput(
-                    listOf("credential_query", "claims"), null, CREDENTIAL_QUERY_CLASS_NAME
+                    listOf("credential_query", "claims"),
+                    null,
+                    CREDENTIAL_QUERY_CLASS_NAME
                 )
             }
 
             val claimIds = claimsList.mapNotNull { it.id }
+
             if (claimIds.size != claimIds.toSet().size) {
                 throw OpenID4VPExceptions.InvalidData(
                     "Claim ids must be unique within a Credential Query",
@@ -95,7 +105,9 @@ data class CredentialQuery(
                 claim.validate(isClaimSetsAvailable = claimSets != null)
             }
         }
+    }
 
+    private fun validateClaimSets() {
         claimSets?.let { sets ->
             if (claims == null) {
                 throw OpenID4VPExceptions.InvalidData(
@@ -103,18 +115,26 @@ data class CredentialQuery(
                     CREDENTIAL_QUERY_CLASS_NAME
                 )
             }
+
             if (sets.isEmpty()) {
                 throw OpenID4VPExceptions.InvalidInput(
-                    listOf("credential_query", "claim_sets"), null, CREDENTIAL_QUERY_CLASS_NAME
+                    listOf("credential_query", "claim_sets"),
+                    null,
+                    CREDENTIAL_QUERY_CLASS_NAME
                 )
             }
+
             val validClaimIds = claims.mapNotNull { it.id }.toSet()
+
             for (claimSet in sets) {
                 if (claimSet.isEmpty()) {
                     throw OpenID4VPExceptions.InvalidInput(
-                        listOf("credential_query", "claim_sets"), null, CREDENTIAL_QUERY_CLASS_NAME
+                        listOf("credential_query", "claim_sets"),
+                        null,
+                        CREDENTIAL_QUERY_CLASS_NAME
                     )
                 }
+
                 for (claimId in claimSet) {
                     if (!validClaimIds.contains(claimId)) {
                         throw OpenID4VPExceptions.InvalidData(

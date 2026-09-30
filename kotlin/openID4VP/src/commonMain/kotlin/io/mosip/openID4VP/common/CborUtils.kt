@@ -15,6 +15,8 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
 
+private const val SHA_256_ALGORITHM = "SHA-256"
+
 // Format: #6.24(bstr .cbor input)
 fun taggedCbor24(input: DataItem): ByteArray {
     val innerCborBytes: ByteArray = encodeToCBOR(input)
@@ -106,14 +108,14 @@ fun createHashedDataItem(vararg items: Any?): ByteString {
 }
 
 fun generateHash(input: DataItem): ByteArray {
-    val digest = MessageDigest.getInstance("SHA-256")
+    val digest = MessageDigest.getInstance(SHA_256_ALGORITHM)
     val encodedCbor = encodeCbor(input)
     val hashBytes = digest.digest(encodedCbor)
     return hashBytes
 }
 
 fun generateHash(input: ByteArray): ByteArray {
-    val digest = MessageDigest.getInstance("SHA-256")
+    val digest = MessageDigest.getInstance(SHA_256_ALGORITHM)
     val hashBytes = digest.digest(input)
     return hashBytes
 }
@@ -147,7 +149,7 @@ fun jwkThumbprintBytes(jwk: Jwk): ByteArray {
         "RSA" -> throw IllegalArgumentException("RSA key type not supported in current Jwk model")
         else -> throw IllegalArgumentException("Unsupported key type for JWK thumbprint: ${jwk.kty}")
     }
-    val digest = MessageDigest.getInstance("SHA-256")
+    val digest = MessageDigest.getInstance(SHA_256_ALGORITHM)
     return digest.digest(canonicalJson.toByteArray(Charsets.UTF_8))
 }
 

@@ -34,7 +34,7 @@ class DirectPostJwtResponseModeHandler : ResponseModeBasedHandler() {
         shouldValidateWithWalletMetadata: Boolean
     ): ResponseEncryptionSpecification {
         requireNotNull(clientMetadata) {
-            throwInvalidDataException("client_metadata must be present for given response mode")
+            throwInvalidDataException(CLIENT_METADATA_REQUIRED)
         }
 
         val alg = clientMetadata.authorizationEncryptedResponseAlg
@@ -63,7 +63,7 @@ class DirectPostJwtResponseModeHandler : ResponseModeBasedHandler() {
         shouldValidateWithWalletMetadata: Boolean
     ): ResponseEncryptionSpecification {
         requireNotNull(clientMetadata) {
-            throwInvalidDataException("client_metadata must be present for given response mode")
+            throwInvalidDataException(CLIENT_METADATA_REQUIRED)
         }
 
         val encValues = clientMetadata.encryptedResponseEncValuesSupported
@@ -259,7 +259,7 @@ class DirectPostJwtResponseModeHandler : ResponseModeBasedHandler() {
                     val clientMetadata =
                         (authorizationRequest as? AuthorizationDcqlRequest)?.clientMetadata
                             ?: throw OpenID4VPExceptions.InvalidData(
-                                "client_metadata must be present for given response mode",
+                                CLIENT_METADATA_REQUIRED,
                                 className
                             )
                     val verifierJwks = clientMetadata.jwks
@@ -278,6 +278,8 @@ class DirectPostJwtResponseModeHandler : ResponseModeBasedHandler() {
     }
 
     private companion object {
+        private const val CLIENT_METADATA_REQUIRED =
+            "client_metadata must be present for given response mode"
         fun selectEncryptionKey(keys: List<Jwk>, algValues: List<String>): Jwk {
             val matchingKeys = keys.filter { algValues.contains(it.alg) }
             if (matchingKeys.isEmpty()) {
