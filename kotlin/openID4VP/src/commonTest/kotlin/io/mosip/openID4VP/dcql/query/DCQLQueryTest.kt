@@ -12,7 +12,9 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
-
+private const val EMPLOYEE_CARD = "employee-card"
+private const val VC_SD_JWT = "vc+sd-jwt"
+private const val GIVEN_NAME = "given-name"
 class DCQLQueryTest {
 
     @Test
@@ -20,8 +22,8 @@ class DCQLQueryTest {
         val query = DCQLQuery(
             credentials = listOf(
                 CredentialQuery(
-                    id = "employee-card",
-                    format = "vc+sd-jwt",
+                    id = EMPLOYEE_CARD,
+                    format = VC_SD_JWT,
                     multiple = true,
                     meta = mapOf(
                         "vct_values" to listOf("EmployeeCardCredential"),
@@ -32,7 +34,7 @@ class DCQLQueryTest {
                     requireCryptographicHolderBinding = false,
                     claims = listOf(
                         ClaimsQuery(
-                            id = "given-name",
+                            id = GIVEN_NAME,
                             path = listOf("credentialSubject", "given_name", null, 0),
                             values = listOf(
                                 ClaimValue.StringValue("Alice"),
@@ -41,7 +43,7 @@ class DCQLQueryTest {
                             )
                         )
                     ),
-                    claimSets = listOf(listOf("given-name"))
+                    claimSets = listOf(listOf(GIVEN_NAME))
                 ),
                 CredentialQuery(
                     id = "licence",
@@ -51,7 +53,7 @@ class DCQLQueryTest {
             ),
             credentialSets = listOf(
                 CredentialSetQuery(
-                    options = listOf(listOf("employee-card"), listOf("licence")),
+                    options = listOf(listOf(EMPLOYEE_CARD), listOf("licence")),
                     required = false
                 )
             )
@@ -73,7 +75,7 @@ class DCQLQueryTest {
               "credentials": [
                 {
                   "id": "cred1",
-                  "format": "vc+sd-jwt",
+                  "format": "$VC_SD_JWT",
                   "meta": {
                     "priority": 2,
                     "holder_binding_required": true,
@@ -81,12 +83,12 @@ class DCQLQueryTest {
                   },
                   "claims": [
                     {
-                      "id": "given-name",
+                      "id": "$GIVEN_NAME",
                       "path": ["credentialSubject", "given_name"],
                       "values": ["Alice", 42, true]
                     }
                   ],
-                  "claim_sets": [["given-name"]]
+                  "claim_sets": [["$GIVEN_NAME"]]
                 }
               ]
             }
@@ -101,7 +103,7 @@ class DCQLQueryTest {
         assertEquals(2, credential.meta["priority"])
         assertEquals(true, credential.meta["holder_binding_required"])
         assertEquals(listOf("alpha", "beta"), credential.meta["labels"])
-        assertEquals(listOf("given-name"), credential.claimSets!!.first())
+        assertEquals(listOf(GIVEN_NAME), credential.claimSets!!.first())
         assertIs<ClaimValue.StringValue>(claims.values!![0])
         assertIs<ClaimValue.LongValue>(claims.values[1])
         assertIs<ClaimValue.BoolValue>(claims.values[2])
@@ -113,7 +115,7 @@ class DCQLQueryTest {
             credentials = listOf(
                 CredentialQuery(
                     id = "cred1",
-                    format = "vc+sd-jwt",
+                    format = VC_SD_JWT,
                     claims = listOf(
                         ClaimsQuery(
                             id = "name",
@@ -139,7 +141,7 @@ class DCQLQueryTest {
             credentials = listOf(
                 CredentialQuery(
                     id = "cred1",
-                    format = "vc+sd-jwt",
+                    format = VC_SD_JWT,
                     meta = mapOf("nested" to mapOf(1 to "value"))
                 )
             )
@@ -158,15 +160,15 @@ class DCQLQueryTest {
         val query = DCQLQuery(
             credentials = listOf(
                 CredentialQuery(
-                    id = "employee-card",
-                    format = "vc+sd-jwt",
+                    id = EMPLOYEE_CARD,
+                    format = VC_SD_JWT,
                     claims = listOf(ClaimsQuery(path = listOf("given_name")))
                 )
             )
         )
 
         assertEquals(1, query.credentials.size)
-        assertEquals("employee-card", query.credentials.first().id)
+        assertEquals(EMPLOYEE_CARD, query.credentials.first().id)
         assertNull(query.credentialSets)
     }
 
@@ -174,7 +176,7 @@ class DCQLQueryTest {
     fun `should create valid query with multiple credential queries`() {
         val query = DCQLQuery(
             credentials = listOf(
-                CredentialQuery(id = "sdjwt", format = "vc+sd-jwt"),
+                CredentialQuery(id = "sdjwt", format = VC_SD_JWT),
                 CredentialQuery(id = "mdoc", format = "mso_mdoc", multiple = true)
             )
         )
@@ -187,7 +189,7 @@ class DCQLQueryTest {
     fun `should create valid query with credential sets`() {
         val query = DCQLQuery(
             credentials = listOf(
-                CredentialQuery(id = "sdjwt", format = "vc+sd-jwt"),
+                CredentialQuery(id = "sdjwt", format = VC_SD_JWT),
                 CredentialQuery(id = "mdoc", format = "mso_mdoc")
             ),
             credentialSets = listOf(
@@ -218,7 +220,7 @@ class DCQLQueryTest {
         val exception = assertFailsWith<OpenID4VPExceptions.InvalidData> {
             DCQLQuery(
                 credentials = listOf(
-                    CredentialQuery(id = "duplicate", format = "vc+sd-jwt"),
+                    CredentialQuery(id = "duplicate", format = VC_SD_JWT),
                     CredentialQuery(id = "duplicate", format = "mso_mdoc")
                 )
             )
@@ -235,7 +237,7 @@ class DCQLQueryTest {
     fun `should throw when credential set references unknown query id`() {
         val exception = assertFailsWith<OpenID4VPExceptions.InvalidData> {
             DCQLQuery(
-                credentials = listOf(CredentialQuery(id = "known", format = "vc+sd-jwt")),
+                credentials = listOf(CredentialQuery(id = "known", format = VC_SD_JWT)),
                 credentialSets = listOf(CredentialSetQuery(options = listOf(listOf("unknown"))))
             )
         }
@@ -335,3 +337,6 @@ class DCQLQueryTest {
         )
     }
 }
+
+
+

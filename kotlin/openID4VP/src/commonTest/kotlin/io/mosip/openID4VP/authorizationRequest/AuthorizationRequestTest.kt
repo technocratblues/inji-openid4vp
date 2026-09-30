@@ -36,6 +36,10 @@ import io.mosip.openID4VP.testData.trustedVerifiers
 import io.mosip.openID4VP.testData.walletNonce
 import kotlin.test.*
 
+private const val TEST_WALLET_APP_ID = "test-OpenID4VP"
+private const val CONTENT_TYPE_HEADER = "content-type"
+private const val AUTHZ_REQ_JWT_CONTENT_TYPE = "application/oauth-authz-req+jwt"
+private const val MOCK_CLIENT_ID = "mock-client"
 
 class AuthorizationRequestTest {
     private lateinit var openID4VP: OpenID4VP
@@ -49,7 +53,7 @@ class AuthorizationRequestTest {
         mockkStatic("io.mosip.openID4VP.common.DecoderKt")
         every { decodeFromBase64Url(any()) } answers { java.util.Base64.getUrlDecoder().decode(firstArg<String>()) }
         mockkObject(NetworkManagerClient)
-        openID4VP = OpenID4VP("test-OpenID4VP", WalletConfig(trustedVerifiers = trustedVerifiers))
+        openID4VP = OpenID4VP(TEST_WALLET_APP_ID, WalletConfig(trustedVerifiers = trustedVerifiers))
         
 
         every {
@@ -398,7 +402,7 @@ class AuthorizationRequestTest {
                 requestUrl,
                 any()
             )
-        } returns NetworkResponse(200, createAuthorizationRequestObject(PRE_REGISTERED, authorizationRequestParamsMap, applicationFields).toString(), mapOf("content-type" to listOf("application/oauth-authz-req+jwt")))
+        } returns NetworkResponse(200, createAuthorizationRequestObject(PRE_REGISTERED, authorizationRequestParamsMap, applicationFields).toString(), mapOf(CONTENT_TYPE_HEADER to listOf(AUTHZ_REQ_JWT_CONTENT_TYPE)))
 
 
         val encodedAuthorizationRequest =
@@ -416,7 +420,7 @@ class AuthorizationRequestTest {
     @Test
     fun `should add default client id scheme as pre-registered if not present in authorization request`() {
         val authorizationRequestParamsMap = requestParams +  mapOf(
-            CLIENT_ID.value to "mock-client",
+            CLIENT_ID.value to MOCK_CLIENT_ID,
         )
         val applicationFields =
             listOf(
@@ -437,7 +441,7 @@ class AuthorizationRequestTest {
         } returns  NetworkResponse(
                     200,
                     createAuthorizationRequestObject(PRE_REGISTERED, authorizationRequestParamsMap, applicationFields).toString(),
-                    mapOf("content-type" to listOf("application/oauth-authz-req+jwt"))
+                    mapOf(CONTENT_TYPE_HEADER to listOf(AUTHZ_REQ_JWT_CONTENT_TYPE))
                 )
 
 
@@ -588,12 +592,12 @@ class AuthorizationRequestTest {
                 requestUrl,
                 any()
             )
-        } returns NetworkResponse(200, createAuthorizationRequestObject(PRE_REGISTERED, authorizationRequestParamsMap, applicationFields).toString(), mapOf("content-type" to listOf("application/oauth-authz-req+jwt")))
+        } returns NetworkResponse(200, createAuthorizationRequestObject(PRE_REGISTERED, authorizationRequestParamsMap, applicationFields).toString(), mapOf(CONTENT_TYPE_HEADER to listOf(AUTHZ_REQ_JWT_CONTENT_TYPE)))
 
 
         val encodedAuthorizationRequest =
             createUrlEncodedData(authorizationRequestParamsMap,false , PRE_REGISTERED, applicationFields)
-        openID4VP = OpenID4VP("test-OpenID4VP", WalletConfig())
+        openID4VP = OpenID4VP(TEST_WALLET_APP_ID, WalletConfig())
         assertFailsWith<OpenID4VPExceptions.InvalidVerifier> {
             openID4VP.authenticateVerifier(
                 encodedAuthorizationRequest
@@ -617,7 +621,7 @@ class AuthorizationRequestTest {
         )
         val encodedAuthorizationRequest =
             createUrlEncodedData(authorizationRequestParamsMap, false, PRE_REGISTERED)
-        openID4VP = OpenID4VP("test-OpenID4VP", WalletConfig(trustedVerifiers = verifiers))
+        openID4VP = OpenID4VP(TEST_WALLET_APP_ID, WalletConfig(trustedVerifiers = verifiers))
 
         val actualValue =
             openID4VP.authenticateVerifier(encodedAuthorizationRequest)
@@ -659,7 +663,7 @@ class AuthorizationRequestTest {
                 specVersion = SpecVersion.DRAFT_23
             )
         )
-        openID4VP = OpenID4VP("test-OpenID4VP", WalletConfig(trustedVerifiers = verifiers))
+        openID4VP = OpenID4VP(TEST_WALLET_APP_ID, WalletConfig(trustedVerifiers = verifiers))
         val encodedAuthorizationRequest =
             createUrlEncodedData(authorizationRequestParamsMap, false, PRE_REGISTERED)
 
@@ -686,7 +690,7 @@ class AuthorizationRequestTest {
         )
         val encodedAuthorizationRequest =
             createUrlEncodedData(authorizationRequestParamsMap, false, PRE_REGISTERED)
-        openID4VP = OpenID4VP("test-OpenID4VP", WalletConfig(trustedVerifiers = verifiers))
+        openID4VP = OpenID4VP(TEST_WALLET_APP_ID, WalletConfig(trustedVerifiers = verifiers))
 
         val actualValue =
             openID4VP.authenticateVerifier(encodedAuthorizationRequest)
@@ -709,7 +713,7 @@ class AuthorizationRequestTest {
                 specVersion = SpecVersion.DRAFT_23
             )
         )
-        openID4VP = OpenID4VP("test-OpenID4VP", WalletConfig(trustedVerifiers = verifiers))
+        openID4VP = OpenID4VP(TEST_WALLET_APP_ID, WalletConfig(trustedVerifiers = verifiers))
         val encodedAuthorizationRequest =
             createUrlEncodedData(authorizationRequestParamsMap, false, PRE_REGISTERED)
 
@@ -725,7 +729,7 @@ class AuthorizationRequestTest {
         val setResponseUri: (String) -> Unit = mockk(relaxed = true)
 
         val handler = PreRegisteredSchemeAuthorizationRequestHandler(
-            clientId = "mock-client",
+            clientId = MOCK_CLIENT_ID,
             specVersion = SpecVersion.DRAFT_23,
             authorizationRequestParameters = (requestParams + clientIdOfPreRegistered + mapOf(
                 "transaction_data" to "some_value",
@@ -733,7 +737,7 @@ class AuthorizationRequestTest {
             walletConfig = WalletConfig(
                 trustedVerifiers = listOf(
                     Verifier(
-                        "mock-client", listOf(
+                        MOCK_CLIENT_ID, listOf(
                             "https://mock-verifier.com/response-uri", "https://verifier.env2.com/responseUri"
                         ),
                         "https://mock-verifier.com/.well-known/jwks.json",

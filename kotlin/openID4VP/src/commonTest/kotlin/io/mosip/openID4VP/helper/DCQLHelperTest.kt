@@ -17,7 +17,11 @@ import java.util.Base64
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-
+private const val EMPLOYEE_CARD = "employee-card"
+private const val EMPLOYEE_URL = "https://example.com/employee"
+private const val SDJWT_1 = "sdjwt-1"
+private const val MOBILE_ID = "mobile-id"
+private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
 class DCQLHelperTest {
 
     private val helper = DCQLHelper()
@@ -40,19 +44,19 @@ class DCQLHelperTest {
         val query = DCQLQuery(
             credentials = listOf(
                 CredentialQuery(
-                    id = "employee-card",
+                    id = EMPLOYEE_CARD,
                     format = FormatType.VC_SD_JWT.value,
-                    meta = mapOf("vct_values" to listOf("https://example.com/employee"))
+                    meta = mapOf("vct_values" to listOf(EMPLOYEE_URL))
                 )
             )
         )
 
-        val result = helper.getMatchingCredentials(listOf(DCQLTestFixtures.sdJwtCredential("sdjwt-1")), query)
+        val result = helper.getMatchingCredentials(listOf(DCQLTestFixtures.sdJwtCredential(SDJWT_1)), query)
 
         assertTrue(result.success)
         assertEquals(
-            "sdjwt-1",
-            result.queryMatches["employee-card"]?.matchingCredentials?.first()?.credentialId
+            SDJWT_1,
+            result.queryMatches[EMPLOYEE_CARD]?.matchingCredentials?.first()?.credentialId
         )
     }
 
@@ -61,22 +65,22 @@ class DCQLHelperTest {
         val query = DCQLQuery(
             credentials = listOf(
                 CredentialQuery(
-                    id = "employee-card",
+                    id = EMPLOYEE_CARD,
                     format = FormatType.VC_SD_JWT.value,
-                    meta = mapOf("vct_values" to listOf("https://example.com/employee"))
+                    meta = mapOf("vct_values" to listOf(EMPLOYEE_URL))
                 )
             )
         )
 
         val result = helper.getMatchingCredentials(
-            listOf(DCQLTestFixtures.sdJwtCredential("sdjwt-1", vct = "https://example.com/other")),
+            listOf(DCQLTestFixtures.sdJwtCredential(SDJWT_1, vct = "https://example.com/other")),
             query
         )
 
         assertFalse(result.success)
         assertEquals(
             DCQLEvaluationErrorCodes.CRYPTOGRAPHIC_HOLDER_BINDING_OR_META_FILTER_MISMATCH.value,
-            result.queryMatches["employee-card"]?.failureReason
+            result.queryMatches[EMPLOYEE_CARD]?.failureReason
         )
     }
 
@@ -85,24 +89,24 @@ class DCQLHelperTest {
         val query = DCQLQuery(
             credentials = listOf(
                 CredentialQuery(
-                    id = "employee-card",
+                    id = EMPLOYEE_CARD,
                     format = FormatType.VC_SD_JWT.value,
-                    meta = mapOf("vct_values" to listOf("https://example.com/employee"))
+                    meta = mapOf("vct_values" to listOf(EMPLOYEE_URL))
                 ),
                 CredentialQuery(
-                    id = "mobile-id",
+                    id = MOBILE_ID,
                     format = FormatType.MSO_MDOC.value,
-                    meta = mapOf("doctype_value" to "org.iso.18013.5.1.mDL")
+                    meta = mapOf("doctype_value" to MDL_DOCTYPE)
                 )
             ),
             credentialSets = listOf(
-                CredentialSetQuery(options = listOf(listOf("employee-card", "mobile-id")))
+                CredentialSetQuery(options = listOf(listOf(EMPLOYEE_CARD, MOBILE_ID)))
             )
         )
 
         val result = helper.getMatchingCredentials(
             listOf(
-                DCQLTestFixtures.sdJwtCredential("sdjwt-1"),
+                DCQLTestFixtures.sdJwtCredential(SDJWT_1),
                 DCQLTestFixtures.mdocCredential("mdoc-1")
             ),
             query
@@ -118,23 +122,23 @@ class DCQLHelperTest {
         val query = DCQLQuery(
             credentials = listOf(
                 CredentialQuery(
-                    id = "employee-card",
+                    id = EMPLOYEE_CARD,
                     format = FormatType.VC_SD_JWT.value,
-                    meta = mapOf("vct_values" to listOf("https://example.com/employee"))
+                    meta = mapOf("vct_values" to listOf(EMPLOYEE_URL))
                 ),
                 CredentialQuery(
-                    id = "mobile-id",
+                    id = MOBILE_ID,
                     format = FormatType.MSO_MDOC.value,
-                    meta = mapOf("doctype_value" to "org.iso.18013.5.1.mDL")
+                    meta = mapOf("doctype_value" to MDL_DOCTYPE)
                 )
             ),
             credentialSets = listOf(
-                CredentialSetQuery(options = listOf(listOf("employee-card", "mobile-id")))
+                CredentialSetQuery(options = listOf(listOf(EMPLOYEE_CARD, MOBILE_ID)))
             )
         )
 
         val result = helper.getMatchingCredentials(
-            listOf(DCQLTestFixtures.sdJwtCredential("sdjwt-1")),
+            listOf(DCQLTestFixtures.sdJwtCredential(SDJWT_1)),
             query
         )
 
@@ -146,30 +150,30 @@ class DCQLHelperTest {
         val query = DCQLQuery(
             credentials = listOf(
                 CredentialQuery(
-                    id = "employee-card",
+                    id = EMPLOYEE_CARD,
                     format = FormatType.VC_SD_JWT.value,
-                    meta = mapOf("vct_values" to listOf("https://example.com/employee"))
+                    meta = mapOf("vct_values" to listOf(EMPLOYEE_URL))
                 ),
                 CredentialQuery(
-                    id = "mobile-id",
+                    id = MOBILE_ID,
                     format = FormatType.MSO_MDOC.value,
-                    meta = mapOf("doctype_value" to "org.iso.18013.5.1.mDL")
+                    meta = mapOf("doctype_value" to MDL_DOCTYPE)
                 )
             )
         )
 
         val result = helper.getMatchingCredentials(
             listOf(
-                DCQLTestFixtures.sdJwtCredential("sdjwt-1"),
+                DCQLTestFixtures.sdJwtCredential(SDJWT_1),
                 DCQLTestFixtures.mdocCredential("mdoc-1")
             ),
             query
         )
 
         assertEquals(2, result.credentialSets.size)
-        assertEquals(listOf(listOf("employee-card")), result.credentialSets[0].options)
+        assertEquals(listOf(listOf(EMPLOYEE_CARD)), result.credentialSets[0].options)
         assertTrue(result.credentialSets[0].required)
-        assertEquals(listOf(listOf("mobile-id")), result.credentialSets[1].options)
+        assertEquals(listOf(listOf(MOBILE_ID)), result.credentialSets[1].options)
         assertTrue(result.credentialSets[1].required)
     }
 
@@ -178,26 +182,26 @@ class DCQLHelperTest {
         val query = DCQLQuery(
             credentials = listOf(
                 CredentialQuery(
-                    id = "employee-card",
+                    id = EMPLOYEE_CARD,
                     format = FormatType.VC_SD_JWT.value,
-                    meta = mapOf("vct_values" to listOf("https://example.com/employee"))
+                    meta = mapOf("vct_values" to listOf(EMPLOYEE_URL))
                 ),
                 CredentialQuery(
-                    id = "mobile-id",
+                    id = MOBILE_ID,
                     format = FormatType.MSO_MDOC.value,
-                    meta = mapOf("doctype_value" to "org.iso.18013.5.1.mDL")
+                    meta = mapOf("doctype_value" to MDL_DOCTYPE)
                 )
             ),
             credentialSets = listOf(
                 CredentialSetQuery(
-                    options = listOf(listOf("employee-card", "mobile-id")),
+                    options = listOf(listOf(EMPLOYEE_CARD, MOBILE_ID)),
                     required = false
                 )
             )
         )
 
         val result = helper.getMatchingCredentials(
-            listOf(DCQLTestFixtures.sdJwtCredential("sdjwt-1")),
+            listOf(DCQLTestFixtures.sdJwtCredential(SDJWT_1)),
             query
         )
 

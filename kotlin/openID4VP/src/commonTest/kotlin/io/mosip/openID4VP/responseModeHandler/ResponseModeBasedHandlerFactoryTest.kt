@@ -5,7 +5,8 @@ import io.mosip.openID4VP.exceptions.OpenID4VPExceptions.InvalidData
 import io.mosip.openID4VP.responseModeHandler.types.DirectPostJwtResponseModeHandler
 import io.mosip.openID4VP.responseModeHandler.types.DirectPostResponseModeHandler
 import kotlin.test.*
-
+private const val UNSUPPORTED_RESPONSE_MODE_MESSAGE =
+    "Given response_mode is not supported"
 class ResponseModeBasedHandlerFactoryTest {
 
     @Test
@@ -68,7 +69,7 @@ class ResponseModeBasedHandlerFactoryTest {
             ResponseModeBasedHandlerFactory.get(unsupportedMode)
         }
 
-        assertEquals("Given response_mode is not supported", exception.message)
+        assertEquals(UNSUPPORTED_RESPONSE_MODE_MESSAGE, exception.message)
     }
 
     @Test
@@ -77,7 +78,7 @@ class ResponseModeBasedHandlerFactoryTest {
             ResponseModeBasedHandlerFactory.get("null")
         }
 
-        assertEquals("Given response_mode is not supported", exception.message)
+        assertEquals(UNSUPPORTED_RESPONSE_MODE_MESSAGE, exception.message)
     }
 
     @Test
@@ -86,7 +87,7 @@ class ResponseModeBasedHandlerFactoryTest {
             ResponseModeBasedHandlerFactory.get("")
         }
 
-        assertEquals("Given response_mode is not supported", exception.message)
+        assertEquals(UNSUPPORTED_RESPONSE_MODE_MESSAGE, exception.message)
     }
 
     @Test
@@ -95,7 +96,7 @@ class ResponseModeBasedHandlerFactoryTest {
             ResponseModeBasedHandlerFactory.get("   ")
         }
 
-        assertEquals("Given response_mode is not supported", exception.message)
+        assertEquals(UNSUPPORTED_RESPONSE_MODE_MESSAGE, exception.message)
     }
 
     @Test
@@ -106,7 +107,7 @@ class ResponseModeBasedHandlerFactoryTest {
             ResponseModeBasedHandlerFactory.get(upperCaseMode)
         }
 
-        assertEquals("Given response_mode is not supported", exception.message)
+        assertEquals(UNSUPPORTED_RESPONSE_MODE_MESSAGE, exception.message)
     }
 
     @Test
@@ -117,7 +118,7 @@ class ResponseModeBasedHandlerFactoryTest {
             ResponseModeBasedHandlerFactory.get(modeWithSpaces)
         }
 
-        assertEquals("Given response_mode is not supported", exception.message)
+        assertEquals(UNSUPPORTED_RESPONSE_MODE_MESSAGE, exception.message)
     }
 
     @Test
@@ -153,7 +154,7 @@ class ResponseModeBasedHandlerFactoryTest {
             val exception = assertFailsWith<InvalidData> {
                 ResponseModeBasedHandlerFactory.get(mode)
             }
-            assertEquals("Given response_mode is not supported", exception.message)
+            assertEquals(UNSUPPORTED_RESPONSE_MODE_MESSAGE, exception.message)
         }
     }
 
@@ -165,3 +166,4 @@ class ResponseModeBasedHandlerFactoryTest {
         assertSame(factory1, factory2, "Factory should be a singleton object")
     }
 }
+

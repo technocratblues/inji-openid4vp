@@ -27,7 +27,11 @@ import io.mosip.openID4VP.testData.ldpCredential2
 import io.mosip.openID4VP.testData.presentationDefinitionMap
 import io.mosip.openID4VP.testData.walletConfig
 import kotlin.test.*
-
+private const val MOCK_VERIFIER_RESPONSE = "https://mock-verifier.com/response"
+private const val LDP_QUERY_1 = "ldp-query-1"
+private const val LDP_QUERY_2 = "ldp-query-2"
+private const val INPUT_DESCRIPTOR_ID1 = "input-descriptor-id1"
+private const val INPUT_DESCRIPTOR_ID2 = "input-descriptor-id2"
 class UnsignedLdpVPTokenBuilderTest {
 
     private val verifiableCredentials = listOf(ldpCredential1, ldpCredential2)
@@ -42,7 +46,7 @@ class UnsignedLdpVPTokenBuilderTest {
         responseType = "vp_token",
         responseMode = "direct_post",
         presentationDefinition = deserializeAndValidate(presentationDefinitionMap, PresentationDefinitionSerializer),
-        responseUri = "https://mock-verifier.com/response",
+        responseUri = MOCK_VERIFIER_RESPONSE,
         redirectUri = null,
         nonce = challenge,
         state = null,
@@ -53,15 +57,15 @@ class UnsignedLdpVPTokenBuilderTest {
         clientId = domain,
         responseType = "vp_token",
         responseMode = "direct_post",
-        responseUri = "https://mock-verifier.com/response",
+        responseUri = MOCK_VERIFIER_RESPONSE,
         redirectUri = null,
         nonce = challenge,
         state = null,
         walletNonce = null,
         dcqlQuery = DCQLQuery(
             credentials = listOf(
-                CredentialQuery(id = "ldp-query-1", format = "ldp_vc", requireCryptographicHolderBinding = true),
-                CredentialQuery(id = "ldp-query-2", format = "ldp_vc", requireCryptographicHolderBinding = true),
+                CredentialQuery(id = LDP_QUERY_1, format = "ldp_vc", requireCryptographicHolderBinding = true),
+                CredentialQuery(id = LDP_QUERY_2, format = "ldp_vc", requireCryptographicHolderBinding = true),
             )
         )
     )
@@ -70,7 +74,7 @@ class UnsignedLdpVPTokenBuilderTest {
         clientId = domain,
         responseType = "vp_token",
         responseMode = "direct_post",
-        responseUri = "https://mock-verifier.com/response",
+        responseUri = MOCK_VERIFIER_RESPONSE,
         redirectUri = null,
         nonce = challenge,
         state = null,
@@ -86,15 +90,15 @@ class UnsignedLdpVPTokenBuilderTest {
         clientId = domain,
         responseType = "vp_token",
         responseMode = "direct_post",
-        responseUri = "https://mock-verifier.com/response",
+        responseUri = MOCK_VERIFIER_RESPONSE,
         redirectUri = null,
         nonce = challenge,
         state = null,
         walletNonce = null,
         dcqlQuery = DCQLQuery(
             credentials = listOf(
-                CredentialQuery(id = "ldp-query-1", format = "ldp_vc", requireCryptographicHolderBinding = true),
-                CredentialQuery(id = "ldp-query-2", format = "ldp_vc", requireCryptographicHolderBinding = true),
+                CredentialQuery(id = LDP_QUERY_1, format = "ldp_vc", requireCryptographicHolderBinding = true),
+                CredentialQuery(id = LDP_QUERY_2, format = "ldp_vc", requireCryptographicHolderBinding = true),
             )
         )
     )
@@ -128,8 +132,8 @@ class UnsignedLdpVPTokenBuilderTest {
     @Test
     fun `test build(credentialInputDescriptorMappings) with JsonWebSignature2020`() {
         val mappings = listOf(
-            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential1, "input-descriptor-id1"),
-            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential2, "input-descriptor-id2")
+            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential1, INPUT_DESCRIPTOR_ID1),
+            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential2, INPUT_DESCRIPTOR_ID2)
         )
         val builder = UnsignedLdpVPTokenBuilder(
             authorizationRequest = testAuthorizationRequest,
@@ -179,8 +183,8 @@ class UnsignedLdpVPTokenBuilderTest {
     fun `test build(credentialInputDescriptorMappings) canonicalization error handling`() {
         every { URDNA2015Canonicalization.canonicalize(any()) } throws RuntimeException("Canonicalization failed")
         val mappings = listOf(
-            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential1, "input-descriptor-id1"),
-            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential2, "input-descriptor-id2")
+            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential1, INPUT_DESCRIPTOR_ID1),
+            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential2, INPUT_DESCRIPTOR_ID2)
         )
         val builder = UnsignedLdpVPTokenBuilder(
             authorizationRequest = testAuthorizationRequest,
@@ -197,8 +201,8 @@ class UnsignedLdpVPTokenBuilderTest {
     @Test
     fun `test build(credentialInputDescriptorMappings) sets nestedPath correctly`() {
         val credentialInputDescriptorMappings = listOf(
-            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential1, "input-descriptor-id1"),
-            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential2, "input-descriptor-id2")
+            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential1, INPUT_DESCRIPTOR_ID1),
+            CredentialInputDescriptorMapping(FormatType.LDP_VC, ldpCredential2, INPUT_DESCRIPTOR_ID2)
         )
         val builder = UnsignedLdpVPTokenBuilder(
             authorizationRequest = testAuthorizationRequest,
@@ -219,7 +223,7 @@ class UnsignedLdpVPTokenBuilderTest {
             CredentialToCredentialQueryIdMapping(
                 format = FormatType.LDP_VC,
                 credential = ldpCredential1,
-                credentialQueryId = "ldp-query-1"
+                credentialQueryId = LDP_QUERY_1
             )
         )
         val builder = UnsignedLdpVPTokenBuilder(
@@ -266,12 +270,12 @@ class UnsignedLdpVPTokenBuilderTest {
             CredentialToCredentialQueryIdMapping(
                 format = FormatType.LDP_VC,
                 credential = ldpCredential1,
-                credentialQueryId = "ldp-query-1"
+                credentialQueryId = LDP_QUERY_1
             ),
             CredentialToCredentialQueryIdMapping(
                 format = FormatType.LDP_VC,
                 credential = ldpCredential2,
-                credentialQueryId = "ldp-query-2"
+                credentialQueryId = LDP_QUERY_2
             )
         )
         val builder = UnsignedLdpVPTokenBuilder(
@@ -293,7 +297,7 @@ class UnsignedLdpVPTokenBuilderTest {
             CredentialToCredentialQueryIdMapping(
                 format = FormatType.LDP_VC,
                 credential = ldpCredential1,
-                credentialQueryId = "ldp-query-1"
+                credentialQueryId = LDP_QUERY_1
             )
         )
         val builder = UnsignedLdpVPTokenBuilder(
@@ -366,3 +370,4 @@ class UnsignedLdpVPTokenBuilderTest {
         assertEquals("base64url#0", UnsignedLdpVPTokenBuilder.sanitizeHolderId("base64url=="))
     }
 }
+

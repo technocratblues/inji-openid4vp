@@ -12,7 +12,8 @@ import io.mosip.openID4VP.testData.assertOpenId4VPException
 import io.mosip.vercred.vcverifier.keyResolver.types.did.DidPublicKeyResolver
 import kotlin.test.*
 import java.security.PublicKey
-
+private const val UNSUPPORTED_JWS_ALGORITHM_MESSAGE =
+    "Unable to resolve a supported JWS algorithm for key"
 // Test helper: Creates a PublicKey with predictable class name for testing unsupported algorithms
 class TestPublicKey(val keyAlgorithm: String) : PublicKey {
     override fun getAlgorithm(): String = keyAlgorithm
@@ -303,7 +304,7 @@ class UtilsTest {
             }
             assertOpenId4VPException(
                 dhException,
-                "Unable to resolve a supported JWS algorithm for key",
+                UNSUPPORTED_JWS_ALGORITHM_MESSAGE,
                 OpenID4VPErrorCodes.INVALID_REQUEST,
                 expectedUnderlyingErrorMessage = "Unsupported key type: TestPublicKey"
             )
@@ -325,7 +326,7 @@ class UtilsTest {
             }
             assertOpenId4VPException(
                 ecNullCurveException,
-                "Unable to resolve a supported JWS algorithm for key",
+                UNSUPPORTED_JWS_ALGORITHM_MESSAGE,
                 OpenID4VPErrorCodes.INVALID_REQUEST,
                 expectedUnderlyingErrorMessage = "Unknown or unsupported EC curve parameters"
             )
@@ -351,7 +352,7 @@ class UtilsTest {
             }
             assertOpenId4VPException(
                 ecUnsupportedCurveException,
-                "Unable to resolve a supported JWS algorithm for key",
+                UNSUPPORTED_JWS_ALGORITHM_MESSAGE,
                 OpenID4VPErrorCodes.INVALID_REQUEST,
                 expectedUnderlyingErrorMessage = "Unsupported EC curve: UNSUPPORTED_CURVE"
             )
@@ -361,3 +362,4 @@ class UtilsTest {
         }
     }
 }
+

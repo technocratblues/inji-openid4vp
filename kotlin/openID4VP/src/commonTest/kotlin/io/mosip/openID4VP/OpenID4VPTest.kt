@@ -33,6 +33,15 @@ import org.junit.jupiter.api.assertThrows
 import kotlin.collections.mapOf
 import kotlin.test.*
 
+private const val OPENID_VC_REQUEST_URL = "openid-vc://?request=test-request"
+private const val MOCK_VERIFIER_RESPONSE_URI = "https://mock-verifier.com/response-uri"
+private const val VERIFIER_ENV2_RESPONSE_URI = "https://verifier.env2.com/responseUri"
+private const val ERROR_RECEIVED_RESPONSE_BODY = """{"message":"Error received successfully"}"""
+private const val CONTENT_TYPE_HEADER = "Content-Type"
+private const val APPLICATION_JSON = "application/json"
+private const val UNSUPPORTED_RESPONSE_MODE_MESSAGE = "Unsupported response_mode"
+private const val RANDOM_UUID = "random-uuid"
+
 class OpenID4VPTest {
 
     private lateinit var openID4VP: OpenID4VP
@@ -80,13 +89,13 @@ class OpenID4VPTest {
         } returns authorizationPresentationExchangeRequest
 
         val result = openID4VP.authenticateVerifier(
-            "openid-vc://?request=test-request"
+            OPENID_VC_REQUEST_URL
         )
 
         assertEquals(authorizationPresentationExchangeRequest, result)
         verify {
             AuthorizationRequest.validateAndCreateAuthorizationRequest(
-                "openid-vc://?request=test-request",
+                OPENID_VC_REQUEST_URL,
                 any(),
                 any(),
                 any()
@@ -106,23 +115,23 @@ class OpenID4VPTest {
         val trustedVerifiers: List<Verifier> = listOf(
             Verifier(
                 "mock-client", listOf(
-                    "https://mock-verifier.com/response-uri", "https://verifier.env2.com/responseUri"
+                    MOCK_VERIFIER_RESPONSE_URI, VERIFIER_ENV2_RESPONSE_URI
                 )
             ), Verifier(
                 "mock-client2", listOf(
-                    "https://verifier.env3.com/responseUri", "https://verifier.env2.com/responseUri"
+                    "https://verifier.env3.com/responseUri", VERIFIER_ENV2_RESPONSE_URI
                 )
             )
         )
 
         val result = openID4VP.authenticateVerifier(
-            "openid-vc://?request=test-request"
+            OPENID_VC_REQUEST_URL
         )
 
         assertEquals(authorizationPresentationExchangeRequest, result)
         verify {
             AuthorizationRequest.validateAndCreateAuthorizationRequest(
-                "openid-vc://?request=test-request",
+                OPENID_VC_REQUEST_URL,
                 any(),
                 any(),
                 any()
@@ -149,7 +158,7 @@ class OpenID4VPTest {
             NetworkManagerClient.sendHTTPRequest(
                 any(), any(), any()
             )
-        } returns NetworkResponse(200, """{"message":"Error received successfully"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns NetworkResponse(200, ERROR_RECEIVED_RESPONSE_BODY, mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         val invalidInputException = assertFailsWith<InvalidInput> {
             openID4VP.authenticateVerifier("openid-vc://?request=invalid")
@@ -167,14 +176,14 @@ class OpenID4VPTest {
     fun `exception thrown should have verifier response if sent to verifier`() {
         val openID4VPInstance = OpenID4VP("OVPTest")
         mockkConstructor(AuthorizationResponseHandler::class)
-        setField(openID4VPInstance, "responseUri", "https://mock-verifier.com/response-uri")
+        setField(openID4VPInstance, "responseUri", MOCK_VERIFIER_RESPONSE_URI)
         every {
             anyConstructed<AuthorizationResponseHandler>().sendAuthorizationError(
                 any(),
                 any(),
                 any()
             )
-        } returns VerifierResponse(200, null,"""{"message":"Error received successfully"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns VerifierResponse(200, null,ERROR_RECEIVED_RESPONSE_BODY, mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         val testException = InvalidInput("", "Invalid authorization request", "")
         every {
@@ -237,7 +246,7 @@ class OpenID4VPTest {
 
         every {
             NetworkManagerClient.sendHTTPRequest(any(), any(), any(), any())
-        } returns NetworkResponse(200, """{"message":"Error received successfully"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns NetworkResponse(200, ERROR_RECEIVED_RESPONSE_BODY, mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         val thrown = assertFailsWith<InvalidData> {
             openID4VP.constructUnsignedVPToken(selectedLdpCredentialsList)
@@ -249,24 +258,24 @@ class OpenID4VPTest {
     fun `should send error to verifier successfully`() {
         every {
             NetworkManagerClient.sendHTTPRequest(
-                "https://mock-verifier.com/response-uri",
+                MOCK_VERIFIER_RESPONSE_URI,
                 HttpMethod.POST,
                 any(),
                 any()
             )
-        } returns NetworkResponse(200, """{"message":"VP share success"}""", mapOf("Content-Type" to listOf("application/json")))
-        setField(openID4VP, "responseUri", "https://mock-verifier.com/response-uri")
+        } returns NetworkResponse(200, """{"message":"VP share success"}""", mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
+        setField(openID4VP, "responseUri", MOCK_VERIFIER_RESPONSE_URI)
 
         val dispatchResult =
-            openID4VP.sendErrorInfoToVerifier(InvalidData("Unsupported response_mode", ""))
+            openID4VP.sendErrorInfoToVerifier(InvalidData(UNSUPPORTED_RESPONSE_MODE_MESSAGE, ""))
 
         verify {
             NetworkManagerClient.sendHTTPRequest(
-                "https://mock-verifier.com/response-uri",
+                MOCK_VERIFIER_RESPONSE_URI,
                 HttpMethod.POST,
                 match {
                     it["error"] == "invalid_request" &&
-                            it["error_description"] == "Unsupported response_mode"
+                            it["error_description"] == UNSUPPORTED_RESPONSE_MODE_MESSAGE
                 },
                 any()
             )
@@ -287,7 +296,7 @@ class OpenID4VPTest {
 
         every {
             mockHandler.sendAuthorizationError(any(), any(), any())
-        } returns VerifierResponse(200, null, """{"message":"Error received successfully"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns VerifierResponse(200, null, ERROR_RECEIVED_RESPONSE_BODY, mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         val thrown = assertFailsWith<OpenID4VPExceptions.VerifiablePresentationConstructionFailure> {
             openID4VP.constructUnsignedVPToken(selectedLdpCredentialsList)
@@ -339,7 +348,7 @@ class OpenID4VPTest {
         every {
             mockHandler.constructUnsignedVPToken(any(), any(), any(), any())
         } returns listOf(UnsignedVPToken(
-            "random-uuid",
+            RANDOM_UUID,
             FormatType.LDP_VC,
             "keyRef",
             "Ed25519",
@@ -358,14 +367,14 @@ class OpenID4VPTest {
     fun `should handle sendVPResponseToVerifier method`() {
         val mockHandler = mockk<AuthorizationResponseHandler>()
         val vpTokenSigningResults = listOf(VPTokenSigningResult(
-            id = "random-uuid",
+            id = RANDOM_UUID,
             signedData = "signedData".toByteArray()
         ))
 
         val redirectUri = "https://mock-verifier/com/redirect#response_code=jerhwf"
         every {
             mockHandler.constructAndSendAuthorizationResponseToVerifier(any(), any(), any())
-        } returns VerifierResponse(200, redirectUri, """{"message":"success"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns VerifierResponse(200, redirectUri, """{"message":"success"}""", mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         setField(openID4VP, "authorizationResponseHandler", mockHandler)
 
@@ -381,12 +390,12 @@ class OpenID4VPTest {
 
         every {
             mockHandler.constructAndSendAuthorizationResponseToVerifier(any(), any(), any())
-        } returns VerifierResponse(200, null, """{"message":"success"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns VerifierResponse(200, null, """{"message":"success"}""", mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         setField(openID4VP, "authorizationResponseHandler", mockHandler)
 
         val result = openID4VP.sendVPResponseToVerifier(listOf(VPTokenSigningResult(
-            id = "random-uuid",
+            id = RANDOM_UUID,
             signedData = "signedMdocData".toByteArray()
         )))
 
@@ -397,13 +406,13 @@ class OpenID4VPTest {
     fun `should handle sendVPResponseToVerifier with mock response`() {
         val mockHandler = mockk<AuthorizationResponseHandler>()
         val vpTokenSigningResults = listOf(VPTokenSigningResult(
-            id = "random-uuid",
+            id = RANDOM_UUID,
             signedData = "signedData".toByteArray()
         ))
 
         every {
             mockHandler.constructAndSendAuthorizationResponseToVerifier(any(), any(), any())
-        } returns VerifierResponse(200, null, """{"status":"ok"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns VerifierResponse(200, null, """{"status":"ok"}""", mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         setField(openID4VP, "authorizationResponseHandler", mockHandler)
 
@@ -423,7 +432,7 @@ class OpenID4VPTest {
 
         every {
             NetworkManagerClient.sendHTTPRequest(any(), any(), any(), any())
-        } returns NetworkResponse(200, """{"message":"Error received successfully"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns NetworkResponse(200, ERROR_RECEIVED_RESPONSE_BODY, mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         setField(openID4VP, "authorizationResponseHandler", mockHandler)
 
@@ -454,12 +463,12 @@ class OpenID4VPTest {
     fun `should include state when sending error to verifier`() {
         every {
             NetworkManagerClient.sendHTTPRequest(
-                "https://mock-verifier.com/response-uri",
+                MOCK_VERIFIER_RESPONSE_URI,
                 HttpMethod.POST,
                 any(),
                 any()
             )
-        } returns NetworkResponse(200, """{"message":"Error received successfully"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns NetworkResponse(200, ERROR_RECEIVED_RESPONSE_BODY, mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         val customAuthorizationRequest = createAuthorizationRequestWithState("test-state")
         setField(openID4VP, "authorizationRequest", customAuthorizationRequest)
@@ -468,7 +477,7 @@ class OpenID4VPTest {
 
         verify {
             NetworkManagerClient.sendHTTPRequest(
-                "https://mock-verifier.com/response-uri",
+                MOCK_VERIFIER_RESPONSE_URI,
                 HttpMethod.POST,
                 match {
                     it["error"] == "invalid_request" &&
@@ -484,12 +493,12 @@ class OpenID4VPTest {
     fun `should not include state when authorization request has empty state`() {
         every {
             NetworkManagerClient.sendHTTPRequest(
-                "https://mock-verifier.com/response-uri",
+                MOCK_VERIFIER_RESPONSE_URI,
                 HttpMethod.POST,
                 any(),
                 any()
             )
-        } returns NetworkResponse(200, """{"message":"Error received successfully"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns NetworkResponse(200, ERROR_RECEIVED_RESPONSE_BODY, mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         val customAuthorizationRequest = createAuthorizationRequestWithState("")
         setField(openID4VP, "authorizationRequest", customAuthorizationRequest)
@@ -498,7 +507,7 @@ class OpenID4VPTest {
 
         verify {
             NetworkManagerClient.sendHTTPRequest(
-                "https://mock-verifier.com/response-uri",
+                MOCK_VERIFIER_RESPONSE_URI,
                 HttpMethod.POST,
                 match {
                     it["error"] == "invalid_request" &&
@@ -514,12 +523,12 @@ class OpenID4VPTest {
     fun `should not include state when authorization request has no state`() {
         every {
             NetworkManagerClient.sendHTTPRequest(
-                "https://mock-verifier.com/response-uri",
+                MOCK_VERIFIER_RESPONSE_URI,
                 HttpMethod.POST,
                 any(),
                 any()
             )
-        } returns NetworkResponse(200, """{"message":"Error received successfully"}""", mapOf("Content-Type" to listOf("application/json")))
+        } returns NetworkResponse(200, ERROR_RECEIVED_RESPONSE_BODY, mapOf(CONTENT_TYPE_HEADER to listOf(APPLICATION_JSON)))
 
         val noStateAuthorizationRequest = createAuthorizationRequestWithState(null)
         setField(openID4VP, "authorizationRequest", noStateAuthorizationRequest)
@@ -528,7 +537,7 @@ class OpenID4VPTest {
 
         verify {
             NetworkManagerClient.sendHTTPRequest(
-                "https://mock-verifier.com/response-uri",
+                MOCK_VERIFIER_RESPONSE_URI,
                 HttpMethod.POST,
                 match {
                     it["error"] == "invalid_request" &&
@@ -590,12 +599,12 @@ class OpenID4VPTest {
         val trustedVerifiers: List<Verifier> = listOf(
             Verifier(
                 "mock-client", listOf(
-                    "https://mock-verifier.com/response-uri",
-                    "https://verifier.env2.com/responseUri"
+                    MOCK_VERIFIER_RESPONSE_URI,
+                    VERIFIER_ENV2_RESPONSE_URI
                 )
             ), Verifier(
                 "mock-client2", listOf(
-                    "https://verifier.env3.com/responseUri", "https://verifier.env2.com/responseUri"
+                    "https://verifier.env3.com/responseUri",VERIFIER_ENV2_RESPONSE_URI
                 )
             )
         )
@@ -618,7 +627,7 @@ class OpenID4VPTest {
     fun `should handle constructVPToken method`() {
         val mockHandler = mockk<AuthorizationResponseHandler>()
         val vpTokenSigningResults = listOf(VPTokenSigningResult(
-            id = "random-uuid",
+            id = RANDOM_UUID,
             signedData = "signedData".toByteArray()
         ))
 
@@ -636,18 +645,18 @@ class OpenID4VPTest {
     @Test
     fun `should construct error response successfully`() {
         setField(openID4VP, "walletNonce", "iqweutiuq3o4eq-")
-        setField(openID4VP, "responseUri", "https://mock-verifier.com/response-uri")
+        setField(openID4VP, "responseUri",MOCK_VERIFIER_RESPONSE_URI)
         val mockHandler = mockk<AuthorizationResponseHandler>()
         setField(openID4VP, "authorizationResponseHandler", mockHandler)
         every {
             mockHandler.constructAuthorizationErrorResponse(any(), any(), any())
-        } returns mapOf("error" to "invalid_request", "error_description" to "Unsupported response_mode")
+        } returns mapOf("error" to "invalid_request", "error_description" to UNSUPPORTED_RESPONSE_MODE_MESSAGE)
 
         val errorResult =
-            openID4VP.constructErrorInfo(InvalidData("Unsupported response_mode", ""))
+            openID4VP.constructErrorInfo(InvalidData(UNSUPPORTED_RESPONSE_MODE_MESSAGE, ""))
 
 
-        assertEquals(mapOf("error" to "invalid_request", "error_description" to "Unsupported response_mode"), errorResult)
+        assertEquals(mapOf("error" to "invalid_request", "error_description" to UNSUPPORTED_RESPONSE_MODE_MESSAGE), errorResult)
     }
 
     @Test

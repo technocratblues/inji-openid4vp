@@ -23,7 +23,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-
+private const val INPUT_DESCRIPTOR_ID = "input-descriptor-id"
 class UnsignedVPTokenBuilderJvmTest {
 
     private val testAuthorizationRequest = AuthorizationPresentationExchangeRequest(
@@ -53,14 +53,14 @@ class UnsignedVPTokenBuilderJvmTest {
             )
         )
 
-        spyBuilder.build(listOf(CredentialInputDescriptorMapping(MSO_MDOC, mdocCredential, "input-descriptor-id")))
+        spyBuilder.build(listOf(CredentialInputDescriptorMapping(MSO_MDOC, mdocCredential, INPUT_DESCRIPTOR_ID)))
         verify {
             spyBuilder.build(match<List<CredentialInputDescriptorMapping>> {
                 assertTrue(it.size == 1)
                 val credentialInputDescriptorMapping = it.first()
                 assertEquals(MSO_MDOC, credentialInputDescriptorMapping.format)
                 assertEquals(mdocCredential, credentialInputDescriptorMapping.credential)
-                ("input-descriptor-id" == credentialInputDescriptorMapping.inputDescriptorId)
+                (INPUT_DESCRIPTOR_ID == credentialInputDescriptorMapping.inputDescriptorId)
             })
         }
     }
@@ -95,7 +95,7 @@ class UnsignedVPTokenBuilderJvmTest {
             responseUri = responseUrl,
             mdocGeneratedNonce = walletNonce,
             walletConfig
-        ).build(listOf(CredentialInputDescriptorMapping(MSO_MDOC, mdocCredential, "input-descriptor-id")))
+        ).build(listOf(CredentialInputDescriptorMapping(MSO_MDOC, mdocCredential, INPUT_DESCRIPTOR_ID)))
 
         @Suppress("UNCHECKED_CAST")
         val docTypeToDeviceAuthBytes = payload as? kotlin.collections.Map<String, String> ?: emptyMap()
@@ -122,7 +122,7 @@ class UnsignedVPTokenBuilderJvmTest {
             responseUri = responseUrl,
             mdocGeneratedNonce = walletNonce,
             walletConfig
-        ).build(listOf(CredentialInputDescriptorMapping(MSO_MDOC, mdocCredential, "input-descriptor-id")))
+        ).build(listOf(CredentialInputDescriptorMapping(MSO_MDOC, mdocCredential, INPUT_DESCRIPTOR_ID)))
 
         // Check vpTokenSigningPayload
         @Suppress("UNCHECKED_CAST")

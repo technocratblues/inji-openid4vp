@@ -15,6 +15,10 @@ import io.mosip.openID4VP.networkManager.NetworkResponse
 import io.mosip.openID4VP.testData.*
 import kotlin.test.*
 
+private const val EXAMPLE_RESPONSE_URI = "https://example.com/response"
+private const val TEST_WALLET_NONCE = "VbRRB/LTxLiXmVNZuyMO8A=="
+private const val MOCK_CLIENT_ID = "mock-client"
+private const val REDIRECT_URI_CLIENT_ID = "redirect_uri:https://example.com/callback"
 /**
  * Tests for new features from OVP Spec V1 port:
  * - WalletConfig class and toWalletMetadata() conversion
@@ -63,7 +67,7 @@ class WalletConfigTest {
     @Test
     fun `WalletConfig with trustedVerifiers passes them through`() {
         val verifiers = listOf(
-            Verifier("client-1", listOf("https://example.com/response"))
+            Verifier("client-1", listOf(EXAMPLE_RESPONSE_URI))
         )
         val config = WalletConfig(trustedVerifiers = verifiers)
 
@@ -74,7 +78,7 @@ class WalletConfigTest {
 class GetFallbackForRequestUriTest {
 
     private val setResponseUri: (String) -> Unit = mockk(relaxed = true)
-    private val walletNonce = "VbRRB/LTxLiXmVNZuyMO8A=="
+    private val walletNonce = TEST_WALLET_NONCE
 
     @BeforeTest
     fun setup() {
@@ -101,7 +105,7 @@ class GetFallbackForRequestUriTest {
         val authorizationRequestParameters: MutableMap<String, Any> = mutableMapOf(
             CLIENT_ID.value to "pre-registered:mock-client",
             RESPONSE_TYPE.value to "vp_token",
-            RESPONSE_URI.value to "https://example.com/response",
+            RESPONSE_URI.value to EXAMPLE_RESPONSE_URI,
             RESPONSE_MODE.value to "direct_post",
             NONCE.value to walletNonce,
             STATE.value to "state123",
@@ -117,7 +121,7 @@ class GetFallbackForRequestUriTest {
         )
 
         val handler = PreRegisteredSchemeAuthorizationRequestHandler(
-            clientId = "mock-client",
+            clientId = MOCK_CLIENT_ID,
             specVersion = SpecVersion.DRAFT_23,
             authorizationRequestParameters = authorizationRequestParameters,
             walletConfig = walletConfig,
@@ -182,7 +186,7 @@ class UnrecognizedClientIdPrefixFallbackTest {
     @Test
     fun `extractClientIdPrefix returns REDIRECT_URI for redirect_uri prefix`() {
         val params: MutableMap<String, Any> = mutableMapOf(
-            CLIENT_ID.value to "redirect_uri:https://example.com/callback"
+            CLIENT_ID.value to REDIRECT_URI_CLIENT_ID
         )
         val result = extractClientIdPrefix(params)
         assertEquals(ClientIdPrefix.REDIRECT_URI.value, result)
@@ -201,14 +205,14 @@ class UnrecognizedClientIdPrefixFallbackTest {
 class PreRegisteredProcessValidationTest {
 
     private val setResponseUri: (String) -> Unit = mockk(relaxed = true)
-    private val walletNonce = "VbRRB/LTxLiXmVNZuyMO8A=="
+    private val walletNonce = TEST_WALLET_NONCE
 
     @Test
     fun `process should throw when requestObjectSigningAlgValuesSupported is null`() {
         val authorizationRequestParameters: MutableMap<String, Any> = mutableMapOf(
-            CLIENT_ID.value to "mock-client",
+            CLIENT_ID.value to MOCK_CLIENT_ID,
             RESPONSE_TYPE.value to "vp_token",
-            RESPONSE_URI.value to "https://example.com/response",
+            RESPONSE_URI.value to EXAMPLE_RESPONSE_URI,
             RESPONSE_MODE.value to "direct_post",
             NONCE.value to walletNonce,
             STATE.value to "state123"
@@ -221,11 +225,11 @@ class PreRegisteredProcessValidationTest {
         )
 
         val trustedVerifiers = mutableListOf(
-            Verifier("mock-client", listOf("https://example.com/response"))
+            Verifier(MOCK_CLIENT_ID, listOf(EXAMPLE_RESPONSE_URI))
         )
 
         val handler = PreRegisteredSchemeAuthorizationRequestHandler(
-            "mock-client",
+            MOCK_CLIENT_ID,
             SpecVersion.DRAFT_23,
             authorizationRequestParameters,
             walletConfig,
@@ -249,9 +253,9 @@ class PreRegisteredProcessValidationTest {
     @Test
     fun `process should throw when requestObjectSigningAlgValuesSupported is empty`() {
         val authorizationRequestParameters: MutableMap<String, Any> = mutableMapOf(
-            CLIENT_ID.value to "mock-client",
+            CLIENT_ID.value to MOCK_CLIENT_ID,
             RESPONSE_TYPE.value to "vp_token",
-            RESPONSE_URI.value to "https://example.com/response",
+            RESPONSE_URI.value to EXAMPLE_RESPONSE_URI,
             RESPONSE_MODE.value to "direct_post",
             NONCE.value to walletNonce,
             STATE.value to "state123"
@@ -264,11 +268,11 @@ class PreRegisteredProcessValidationTest {
         )
 
         val trustedVerifiers = mutableListOf(
-            Verifier("mock-client", listOf("https://example.com/response"))
+            Verifier(MOCK_CLIENT_ID, listOf(EXAMPLE_RESPONSE_URI))
         )
 
         val handler = PreRegisteredSchemeAuthorizationRequestHandler(
-            "mock-client",
+            MOCK_CLIENT_ID,
             SpecVersion.DRAFT_23,
             authorizationRequestParameters,
             walletConfig,
@@ -291,9 +295,9 @@ class PreRegisteredProcessValidationTest {
     @Test
     fun `process should return same walletMetadata when signing alg is valid`() {
         val authorizationRequestParameters: MutableMap<String, Any> = mutableMapOf(
-            CLIENT_ID.value to "mock-client",
+            CLIENT_ID.value to MOCK_CLIENT_ID,
             RESPONSE_TYPE.value to "vp_token",
-            RESPONSE_URI.value to "https://example.com/response",
+            RESPONSE_URI.value to EXAMPLE_RESPONSE_URI,
             RESPONSE_MODE.value to "direct_post",
             NONCE.value to walletNonce,
             STATE.value to "state123"
@@ -306,11 +310,11 @@ class PreRegisteredProcessValidationTest {
         )
 
         val trustedVerifiers = mutableListOf(
-            Verifier("mock-client", listOf("https://example.com/response"))
+            Verifier(MOCK_CLIENT_ID, listOf(EXAMPLE_RESPONSE_URI))
         )
 
         val handler = PreRegisteredSchemeAuthorizationRequestHandler(
-            "mock-client",
+            MOCK_CLIENT_ID,
             SpecVersion.DRAFT_23,
             authorizationRequestParameters,
             walletConfig,
@@ -327,12 +331,12 @@ class PreRegisteredProcessValidationTest {
 class RedirectUriProcessTest {
 
     private val setResponseUri: (String) -> Unit = mockk(relaxed = true)
-    private val walletNonce = "VbRRB/LTxLiXmVNZuyMO8A=="
+    private val walletNonce = TEST_WALLET_NONCE
 
     @Test
     fun `RedirectUri process should null out requestObjectSigningAlgValuesSupported`() {
         val authorizationRequestParameters: MutableMap<String, Any> = mutableMapOf(
-            CLIENT_ID.value to "redirect_uri:https://example.com/callback",
+            CLIENT_ID.value to REDIRECT_URI_CLIENT_ID,
             RESPONSE_TYPE.value to "vp_token",
             RESPONSE_URI.value to "https://example.com/callback",
             RESPONSE_MODE.value to "direct_post",
@@ -348,7 +352,7 @@ class RedirectUriProcessTest {
         )
 
         val handler = RedirectUriPrefixAuthorizationRequestHandler(
-            clientId = "redirect_uri:https://example.com/callback",
+            clientId = REDIRECT_URI_CLIENT_ID,
             specVersion = SpecVersion.DRAFT_23,
             authorizationRequestParameters = authorizationRequestParameters,
             walletConfig = walletConfig,

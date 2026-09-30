@@ -13,7 +13,9 @@ import io.mosip.openID4VP.testData.authorizationRequestForResponseModeJWT
 import io.mosip.openID4VP.testData.authorizationResponse
 import io.mosip.openID4VP.testData.walletConfig
 import kotlin.test.*
-
+private const val TEST_RESPONSE_URI = "https://example.com/response"
+private const val TEST_NONCE = "test-nonce"
+private const val TEST_STATE = "test-state"
 class DirectPostResponseModeHandlerTest {
 
     @BeforeTest
@@ -37,8 +39,8 @@ class DirectPostResponseModeHandlerTest {
     @Test
     fun `sendAuthorizationResponse should send request and return response body`() {
         val handler = DirectPostResponseModeHandler()
-        val responseUri = "https://example.com/response"
-        val walletNonce = "test-nonce"
+        val responseUri = TEST_RESPONSE_URI
+        val walletNonce = TEST_NONCE
         val expectedResponse = "Response received"
 
         every {
@@ -72,8 +74,8 @@ class DirectPostResponseModeHandlerTest {
     @Test
     fun `sendAuthorizationResponse should handle network errors`() {
         val handler = DirectPostResponseModeHandler()
-        val responseUri = "https://example.com/response"
-        val walletNonce = "test-nonce"
+        val responseUri = TEST_RESPONSE_URI
+        val walletNonce = TEST_NONCE
 
         every {
             NetworkManagerClient.sendHTTPRequest(
@@ -100,8 +102,8 @@ class DirectPostResponseModeHandlerTest {
     @Test
     fun `sendAuthorizationResponse should handle empty response`() {
         val handler = DirectPostResponseModeHandler()
-        val responseUri = "https://example.com/response"
-        val walletNonce = "test-nonce"
+        val responseUri = TEST_RESPONSE_URI
+        val walletNonce = TEST_NONCE
 
         every {
             NetworkManagerClient.sendHTTPRequest(
@@ -147,7 +149,7 @@ class DirectPostResponseModeHandlerTest {
         val errorResponse = AuthorizationErrorResponse(
             error = "invalid_request",
             errorDescription = "Test error description",
-            state = "test-state"
+            state = TEST_STATE
         )
         
         val result = handler.getAuthorizationErrorResponse(
@@ -268,7 +270,7 @@ class DirectPostResponseModeHandlerTest {
         val errorResponse = AuthorizationErrorResponse(
             error = "server_error",
             errorDescription = "Internal server error",
-            state = "test-state"
+            state = TEST_STATE
         )
         
         val result1 = handler.getAuthorizationErrorResponse(
@@ -320,7 +322,7 @@ class DirectPostResponseModeHandlerTest {
         val errorResponse = AuthorizationErrorResponse(
             error = "invalid_request",
             errorDescription = "Test error",
-            state = "test-state"
+            state = TEST_STATE
         )
         
         val result = handler.getAuthorizationErrorResponse(
@@ -342,6 +344,7 @@ class DirectPostResponseModeHandlerTest {
         assertTrue(result.containsKey("state"))
         assertEquals("invalid_request", result["error"])
         assertEquals("Test error", result["error_description"])
-        assertEquals("test-state", result["state"])
+        assertEquals(TEST_STATE, result["state"])
     }
 }
+

@@ -19,10 +19,12 @@ import io.mosip.openID4VP.common.resolveMdocKeyAndAlg
 import io.mosip.openID4VP.testData.mdocCredential
 import kotlin.test.*
 import co.nstant.`in`.cbor.model.Map as CborMap
-
+private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
+private const val ELC_DOCTYPE = "org.iso.18013.5.1.elc"
+private const val TEST_SIGNATURE_DATA_BASE64 = "c2lnbmF0dXJlX2RhdGE="
 class MdocVPTokenBuilderJvmTest {
 
-    private val docType = "org.iso.18013.5.1.mDL"
+    private val docType = MDL_DOCTYPE
 
     @BeforeTest
     fun setUp() {
@@ -34,9 +36,9 @@ class MdocVPTokenBuilderJvmTest {
             val map = Map()
             // Use the credential to determine docType: first call returns mDL, second returns elc
             if (!cred.startsWith("om5")) { // mdocCredential from testData starts differently from encodeCbor output
-                map.put(UnicodeString("docType"), UnicodeString("org.iso.18013.5.1.mDL"))
+                map.put(UnicodeString("docType"), UnicodeString(MDL_DOCTYPE))
             } else {
-                map.put(UnicodeString("docType"), UnicodeString("org.iso.18013.5.1.elc"))
+                map.put(UnicodeString("docType"), UnicodeString(ELC_DOCTYPE))
             }
             map
         }
@@ -58,7 +60,7 @@ class MdocVPTokenBuilderJvmTest {
         )
         val vpTokenSigningResults = listOf(VPTokenSigningResult(
             id = id,
-            signedData = "c2lnbmF0dXJlX2RhdGE=".toByteArray()
+            signedData = TEST_SIGNATURE_DATA_BASE64.toByteArray()
         ))
 
         val (vpTokens, descriptorMaps, nextIndex) = MdocVPTokenBuilder().build(
@@ -66,7 +68,7 @@ class MdocVPTokenBuilderJvmTest {
                 CredentialInputDescriptorMapping(
                     FormatType.MSO_MDOC,
                     mdocCredential,
-                    "org.iso.18013.5.1.mDL"
+                    MDL_DOCTYPE
                 ).apply { identifier = id }
             ),
             unsignedVPTokenResult = Pair(
@@ -94,7 +96,7 @@ class MdocVPTokenBuilderJvmTest {
     fun `should return token with multiple documents for multiple credentials`() {
         val mdocCredential2 = encodeCbor(
             cborMapOf(
-                "docType" to "org.iso.18013.5.1.elc",
+                "docType" to ELC_DOCTYPE,
                 "issuerSigned" to cborMapOf()
             )
         )
@@ -118,11 +120,11 @@ class MdocVPTokenBuilderJvmTest {
         val vpTokenSigningResults = listOf(
             VPTokenSigningResult(
                 id = id,
-                signedData = "c2lnbmF0dXJlX2RhdGE=".toByteArray()
+                signedData = TEST_SIGNATURE_DATA_BASE64.toByteArray()
             ),
             VPTokenSigningResult(
                 id = id2,
-                signedData = "c2lnbmF0dXJlX2RhdGE=".toByteArray()
+                signedData = TEST_SIGNATURE_DATA_BASE64.toByteArray()
             )
         )
 
@@ -131,12 +133,12 @@ class MdocVPTokenBuilderJvmTest {
                 CredentialInputDescriptorMapping(
                     FormatType.MSO_MDOC,
                     mdocCredential,
-                    "org.iso.18013.5.1.mDL"
+                    MDL_DOCTYPE
                 ).apply { identifier = id },
                 CredentialInputDescriptorMapping(
                     FormatType.MSO_MDOC,
                     encodeToBase64Url(mdocCredential2),
-                    "org.iso.18013.5.1.elc"
+                    ELC_DOCTYPE
                 ).apply { identifier = id2 }
             ),
             unsignedVPTokenResult = Pair(
@@ -179,7 +181,7 @@ class MdocVPTokenBuilderJvmTest {
                     CredentialInputDescriptorMapping(
                         FormatType.MSO_MDOC,
                         mdocCredential,
-                        "org.iso.18013.5.1.mDL"
+                        MDL_DOCTYPE
                     ).apply { identifier = id }
                 ),
                 unsignedVPTokenResult = Pair(
@@ -204,3 +206,4 @@ class MdocVPTokenBuilderJvmTest {
         return vpToken
     }
 }
+

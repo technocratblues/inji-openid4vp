@@ -20,18 +20,17 @@ import io.mosip.openID4VP.exceptions.OpenID4VPExceptions
 import io.mosip.openID4VP.networkManager.NetworkManagerClient.Companion.sendHTTPRequest
 import io.mosip.openID4VP.networkManager.NetworkResponse
 import io.mosip.openID4VP.responseModeHandler.ResponseModeBasedHandler
-
+private const val CLIENT_METADATA_REQUIRED_MESSAGE = "client_metadata must be present for given response mode"
 private val className = DirectPostJwtResponseModeHandler::class.simpleName!!
 
 class DirectPostJwtResponseModeHandler : ResponseModeBasedHandler() {
-
     override fun validate(
         clientMetadata: ClientMetadataDraft23?,
         walletConfig: WalletConfig,
         shouldValidateWithWalletMetadata: Boolean
     ) {
         requireNotNull(clientMetadata) {
-            throwInvalidDataException("client_metadata must be present for given response mode")
+            throwInvalidDataException(CLIENT_METADATA_REQUIRED_MESSAGE)
         }
 
         val alg = clientMetadata.authorizationEncryptedResponseAlg
@@ -59,7 +58,7 @@ class DirectPostJwtResponseModeHandler : ResponseModeBasedHandler() {
         shouldValidateWithWalletMetadata: Boolean
     ) {
         requireNotNull(clientMetadata) {
-            throwInvalidDataException("client_metadata must be present for given response mode")
+            throwInvalidDataException(CLIENT_METADATA_REQUIRED_MESSAGE)
         }
 
         val encValues = clientMetadata.encryptedResponseEncValuesSupported
@@ -217,7 +216,7 @@ class DirectPostJwtResponseModeHandler : ResponseModeBasedHandler() {
                     val clientMetadata =
                         (authorizationRequest as? AuthorizationDcqlRequest)?.clientMetadata
                             ?: throw OpenID4VPExceptions.InvalidData(
-                                "client_metadata must be present for given response mode",
+                                CLIENT_METADATA_REQUIRED_MESSAGE,
                                 className
                             )
                     val verifierJwks = clientMetadata.jwks
@@ -259,7 +258,7 @@ class DirectPostJwtResponseModeHandler : ResponseModeBasedHandler() {
                     val clientMetadata =
                         (authorizationRequest as? AuthorizationDcqlRequest)?.clientMetadata
                             ?: throw OpenID4VPExceptions.InvalidData(
-                                "client_metadata must be present for given response mode",
+                                CLIENT_METADATA_REQUIRED_MESSAGE,
                                 className
                             )
                     val encValues = clientMetadata.encryptedResponseEncValuesSupported
