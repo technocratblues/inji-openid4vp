@@ -1,4 +1,4 @@
-package io.mosip.openID4VP.authorizationRequest.authorizationRequestHandler
+﻿package io.mosip.openID4VP.authorizationRequest.authorizationRequestHandler
 
 import io.mosip.openID4VP.responseModeHandler.ResponseDispatchInfo
 
@@ -48,6 +48,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
+private const val EXAMPLE_REQUEST_URI = "https://example.com/request"
+private const val CONTENT_TYPE_HEADER = "content-type"
+private const val AUTHZ_REQ_JWT_CONTENT_TYPE = "application/oauth-authz-req+jwt"
+private const val AUTHZ_REQ_JWT_TYP = "oauth-authz-req+jwt"
+private const val MOCK_CLIENT_ID = "mock-client"
+
 class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
     @Before
     fun setUp() {
@@ -61,10 +67,12 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
     @Test
     fun `should throw error when request uri returns non 2xx response`() {
         val mockHandler = createMockHandler(
-            authorizationRequestParameters = mutableMapOf(REQUEST_URI.value to "https://example.com/request"),
+            authorizationRequestParameters = mutableMapOf(REQUEST_URI.value to EXAMPLE_REQUEST_URI),
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = false,
             clientIdScheme = "test"
+            )
         )
 
         // Mock sendHTTPRequest to return non-200 response
@@ -88,7 +96,9 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         val authorizationRequestParamsMap = createAuthorizationRequest(
             authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
             clientIdOfPreRegistered + requestParams,
-        ) as MutableMap<String, Any>
+        ).mapNotNull { (key, value) ->
+            value?.let { key to (it as Any) }
+        }.toMap().toMutableMap()
         // WalletConfig with unsupported clientIdPrefixesSupported
         val unsupportedWalletConfig = WalletConfig(
             clientIdPrefixesSupported = listOf(ClientIdPrefix.DECENTRALIZED_IDENTIFIER),
@@ -96,21 +106,23 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         )
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             walletConfig = unsupportedWalletConfig,
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED"
+            )
         )
         // Should throw error when calling handleRequestObjectByReference (simulate POST)
         // We call fetchAuthorizationRequest which will eventually call isClientIdPrefixSupported
         // To trigger POST, we add REQUEST_URI_METHOD = "post" and REQUEST_URI
-        authorizationRequestParamsMap[REQUEST_URI.value] = "https://example.com/request"
+        authorizationRequestParamsMap[REQUEST_URI.value] = EXAMPLE_REQUEST_URI
         authorizationRequestParamsMap["request_uri_method"] = "post"
         every {
             NetworkManagerClient.sendHTTPRequest(any(), any(), any(), any())
-        } returns NetworkResponse(200, "dummy.jwt", mapOf("content-type" to listOf("application/oauth-authz-req+jwt")))
+        } returns NetworkResponse(200, "dummy.jwt", mapOf(CONTENT_TYPE_HEADER to listOf(AUTHZ_REQ_JWT_CONTENT_TYPE)))
         every { JWSHandler.verify(any(), any()) } returns Unit
-        every { JWSHandler.extractDataJsonFromJws(any(), any()) } returns mutableMapOf("alg" to "EdDSA", "typ" to "oauth-authz-req+jwt")
+        every { JWSHandler.extractDataJsonFromJws(any(), any()) } returns mutableMapOf("alg" to "EdDSA", "typ" to AUTHZ_REQ_JWT_TYP)
         // With graceful error handling, unsupported client_id_prefix during POST metadata
         // processing is logged as a warning and the request proceeds without wallet_metadata.
         // The request then fails for other reasons (e.g., invalid JWS structure).
@@ -143,15 +155,17 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
     @Test
     fun `should throw error when both request and request_uri are available in the request`() {
         val authorizationRequestParamsMap: MutableMap<String, Any> = mutableMapOf(
-            REQUEST_URI.value to "https://example.com/request",
+            REQUEST_URI.value to EXAMPLE_REQUEST_URI,
             REQUEST.value to "sample_request_object"
         )
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "test"
+            )
         )
 
         val invalidDataException = assertFailsWith<OpenID4VPExceptions.InvalidData> {
@@ -171,15 +185,19 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
             clientIdOfPreRegistered + requestParams,
             isSigned = true
-        ) as MutableMap<String, Any>
+        ).mapNotNull { (key, value) ->
+            value?.let { key to (it as Any) }
+        }.toMap().toMutableMap()
         // Simulate JWSHandler.extractDataJsonFromJws throwing exception
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } throws Exception("header parse error")
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED",
             extractPublicKey = { _, _ -> mockk<PublicKey>() }
+            )
         )
         val exception = assertFailsWith<OpenID4VPExceptions.InvalidData> {
             mockHandler.fetchAuthorizationRequest()
@@ -190,7 +208,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
     @Test
     fun `should update specVersion to Draft23 for by-value unsigned request`() {
         val authorizationRequestParamsMap: MutableMap<String, Any> = mutableMapOf(
-            CLIENT_ID.value to "mock-client",
+            CLIENT_ID.value to MOCK_CLIENT_ID,
             RESPONSE_TYPE.value to "vp_token",
             RESPONSE_MODE.value to "direct_post",
             RESPONSE_URI.value to responseUrl,
@@ -200,10 +218,12 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             specVersion = SpecVersion.V1,
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED"
+            )
         )
 
         assertEquals(SpecVersion.V1, mockHandler.specVersion)
@@ -225,7 +245,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         every { JWSHandler.verify(any(), any()) } returns Unit
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf(
             "alg" to "EdDSA",
-            "typ" to "oauth-authz-req+jwt"
+            "typ" to AUTHZ_REQ_JWT_TYP
         )
 
         val v1Payload = mutableMapOf<String, Any>(
@@ -240,11 +260,13 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
 
         val mockHandlerV1 = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap.toMutableMap(),
+            config = MockHandlerConfig(
             specVersion = SpecVersion.V1,
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = false,
             clientIdScheme = "DID",
             extractPublicKey = { _, _ -> mockk<PublicKey>() }
+            )
         )
 
         assertEquals(SpecVersion.V1, mockHandlerV1.specVersion)
@@ -263,11 +285,13 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
 
         val mockHandlerDraft23 = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap.toMutableMap(),
+            config = MockHandlerConfig(
             specVersion = SpecVersion.V1,
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = false,
             clientIdScheme = "DID",
             extractPublicKey = { _, _ -> mockk<PublicKey>() }
+            )
         )
 
         assertEquals(SpecVersion.V1, mockHandlerDraft23.specVersion)
@@ -288,12 +312,12 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         } returns NetworkResponse(
             200,
             "header.payload.signature",
-            mapOf("content-type" to listOf("application/oauth-authz-req+jwt"))
+            mapOf(CONTENT_TYPE_HEADER to listOf(AUTHZ_REQ_JWT_CONTENT_TYPE))
         )
         every { JWSHandler.verify(any(), any()) } returns Unit
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf(
             "alg" to "EdDSA",
-            "typ" to "oauth-authz-req+jwt"
+            "typ" to AUTHZ_REQ_JWT_TYP
         )
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.PAYLOAD) } returns mutableMapOf(
             CLIENT_ID.value to didUrl,
@@ -307,6 +331,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             specVersion = SpecVersion.V1,
             walletConfig = walletConfig,
             isSignedRequestSupported = true,
@@ -314,6 +339,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             clientIdScheme = "DID",
             extractPublicKey = { _, _ -> mockk<PublicKey>() },
             walletNonce = walletNonce
+            )
         )
 
         assertEquals(SpecVersion.V1, mockHandler.specVersion)
@@ -324,7 +350,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
     @Test
     fun `should throw error when specVersion and request conformance validation fails`() {
         val authorizationRequestParamsMap: MutableMap<String, Any> = mutableMapOf(
-            CLIENT_ID.value to "mock-client",
+            CLIENT_ID.value to MOCK_CLIENT_ID,
             RESPONSE_TYPE.value to "vp_token",
             RESPONSE_MODE.value to "direct_post",
             RESPONSE_URI.value to responseUrl,
@@ -334,11 +360,13 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             specVersion = SpecVersion.V1,
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED",
             confirmSpecVersionIdentifiedFromRequest = false
+            )
         )
 
         val invalidDataException = assertFailsWith<OpenID4VPExceptions.InvalidData> {
@@ -360,13 +388,17 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         val authorizationRequestParamsMap = createAuthorizationRequest(
             authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
             clientIdOfPreRegistered + requestParams,
-        ) as MutableMap<String, Any>
+        ).mapNotNull { (key, value) ->
+            value?.let { key to (it as Any) }
+        }.toMap().toMutableMap()
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "REDIRECT_URI"
+            )
         )
 
         assertDoesNotThrow  {
@@ -380,13 +412,17 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
             clientIdOfPreRegistered + requestParams,
             isSigned = false
-        ) as MutableMap<String, Any>
+        ).mapNotNull { (key, value) ->
+            value?.let { key to (it as Any) }
+        }.toMap().toMutableMap()
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = false,
             clientIdScheme = "DID"
+            )
         )
 
         val invalidDataException = assertFailsWith<OpenID4VPExceptions.InvalidData> {
@@ -408,22 +444,26 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
             clientIdOfPreRegistered + requestParams,
             isSigned = true
-        ) as MutableMap<String, Any>
+        ).mapNotNull { (key, value) ->
+            value?.let { key to (it as Any) }
+        }.toMap().toMutableMap()
         every { JWSHandler.verify(any(), any()) } returns Unit
-        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to "oauth-authz-req+jwt")
+        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to AUTHZ_REQ_JWT_TYP)
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.PAYLOAD) } returns mutableMapOf(
-            CLIENT_ID.value to "mock-client",
+            CLIENT_ID.value to MOCK_CLIENT_ID,
             // other params are masked here
         )
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED",
             extractPublicKey = { _, _ ->
                 mockk<PublicKey>()
             }
+            )
         )
 
         assertDoesNotThrow {
@@ -435,14 +475,16 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
     fun `should throw error when the request param has invalid input`() {
         val authorizationRequestParamsMap : MutableMap<String, Any> = mutableMapOf(
             REQUEST.value to "",
-            CLIENT_ID.value to "mock-client"
+            CLIENT_ID.value to MOCK_CLIENT_ID
         )
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED"
+            )
         )
 
         val invalidInputException = assertFailsWith<OpenID4VPExceptions.InvalidInput> {
@@ -462,13 +504,17 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
             clientIdOfPreRegistered + requestParams,
             isSigned = true
-        ) as MutableMap<String, Any>
+        ).mapNotNull { (key, value) ->
+            value?.let { key to (it as Any) }
+        }.toMap().toMutableMap()
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = false,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED"
+            )
         )
 
         val invalidDataException = assertFailsWith<OpenID4VPExceptions.InvalidData> {
@@ -488,9 +534,11 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
             clientIdOfPreRegistered + requestParams,
             isSigned = true
-        ) as MutableMap<String, Any>
+        ).mapNotNull { (key, value) ->
+            value?.let { key to (it as Any) }
+        }.toMap().toMutableMap()
         every { JWSHandler.verify(any(), any()) } returns Unit
-        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to "oauth-authz-req+jwt")
+        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to AUTHZ_REQ_JWT_TYP)
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.PAYLOAD) } returns mutableMapOf(
             CLIENT_ID.value to "some-other-client-id",
             // other params are masked here
@@ -498,12 +546,14 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED",
             extractPublicKey = { _, _ ->
                 mockk<PublicKey>()
             }
+            )
         )
 
         val exception = assertFailsWith<OpenID4VPExceptions.MismatchingClientIDInRequest> {
@@ -521,17 +571,19 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
 
     @Test
     fun `should process successfully when the authorization request (object) is available via request_uri param and signed request is supported`() {
-        val authorizationRequestParamsMap: MutableMap<String, Any> = mutableMapOf(REQUEST_URI.value to "https://example.com/request")
+        val authorizationRequestParamsMap: MutableMap<String, Any> = mutableMapOf(REQUEST_URI.value to EXAMPLE_REQUEST_URI)
         every { JWSHandler.verify(any(), any()) } returns Unit
-        every { JWSHandler.extractDataJsonFromJws(any(), any()) } returns mutableMapOf("alg" to "EdDSA", "typ" to "oauth-authz-req+jwt")
+        every { JWSHandler.extractDataJsonFromJws(any(), any()) } returns mutableMapOf("alg" to "EdDSA", "typ" to AUTHZ_REQ_JWT_TYP)
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED",
             extractPublicKey = { _, _ ->
                 mockk<PublicKey>()
             }
+            )
         )
 
         // Mock sendHTTPRequest to return 200 response
@@ -542,9 +594,9 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         } returns NetworkResponse(
             200,
             createAuthorizationRequestObject(ClientIdPrefix.PRE_REGISTERED,
-                authorizationRequestParamsMap as Map<String, String>
+                authorizationRequestParamsMap.mapValues { (_, value) -> value.toString() }
             ).toString(),
-            mapOf("content-type" to listOf("application/oauth-authz-req+jwt")),
+            mapOf(CONTENT_TYPE_HEADER to listOf(AUTHZ_REQ_JWT_CONTENT_TYPE)),
         )
 
         assertDoesNotThrow {
@@ -562,18 +614,22 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         val authorizationRequestObjectMap = createAuthorizationRequest(
             authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.DECENTRALIZED_IDENTIFIER]!!,
             clientIdOfDid + requestParams
-        ) as MutableMap<String, Any>
+        ).mapNotNull { (key, value) ->
+            value?.let { key to (it as Any) }
+        }.toMap().toMutableMap()
         every { JWSHandler.verify(any(), any()) } returns Unit
-        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to "oauth-authz-req+jwt")
+        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to AUTHZ_REQ_JWT_TYP)
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.PAYLOAD) } returns authorizationRequestObjectMap
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED",
             extractPublicKey = { _, _ ->
                 mockk<PublicKey>()
             }
+            )
         )
 
         // Mock sendHTTPRequest to return 200 response
@@ -584,9 +640,9 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         } returns NetworkResponse(
             200,
             createAuthorizationRequestObject(ClientIdPrefix.PRE_REGISTERED,
-                authorizationRequestParamsMap as Map<String, String>
+                authorizationRequestParamsMap.mapValues { (_, value) -> value.toString() }
             ).toString(),
-            mapOf("content-type" to listOf("application/oauth-authz-req+jwt")),
+            mapOf(CONTENT_TYPE_HEADER to listOf(AUTHZ_REQ_JWT_CONTENT_TYPE)),
         )
 
         mockHandler.fetchAuthorizationRequest()
@@ -595,7 +651,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
                         requestUrl,
                         any(),
                         any(),
-                        match { it["accept"] == "application/oauth-authz-req+jwt" }
+                        match { it["accept"] == AUTHZ_REQ_JWT_CONTENT_TYPE }
                     )
                 }
     }
@@ -613,10 +669,11 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         ) + mapOf(WALLET_NONCE.value to walletNonce)) as MutableMap<String, Any>
         println("authorizationRequestObjectMap: $authorizationRequestObjectMap")
         every { JWSHandler.verify(any(), any()) } returns Unit
-        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to "oauth-authz-req+jwt")
+        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to AUTHZ_REQ_JWT_TYP)
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.PAYLOAD) } returns authorizationRequestObjectMap
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED",
@@ -624,6 +681,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
                 mockk<PublicKey>()
             },
             walletNonce = walletNonce
+            )
         )
 
         // Mock sendHTTPRequest to return 200 response
@@ -634,9 +692,9 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         } returns NetworkResponse(
             200,
             createAuthorizationRequestObject(ClientIdPrefix.PRE_REGISTERED,
-                authorizationRequestParamsMap as Map<String, String>
+                authorizationRequestParamsMap.mapValues { (_, value) -> value.toString() }
             ).toString(),
-            mapOf("content-type" to listOf("application/oauth-authz-req+jwt")),
+            mapOf(CONTENT_TYPE_HEADER to listOf(AUTHZ_REQ_JWT_CONTENT_TYPE)),
         )
 
         mockHandler.fetchAuthorizationRequest()
@@ -645,7 +703,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
                 requestUrl,
                 any(),
                 match { it["wallet_nonce"] == walletNonce },
-                match { it["accept"] == "application/oauth-authz-req+jwt" && it["content-type"] == "application/x-www-form-urlencoded" }
+                match { it["accept"] == AUTHZ_REQ_JWT_CONTENT_TYPE && it[CONTENT_TYPE_HEADER] == "application/x-www-form-urlencoded" }
             )
         }
     }
@@ -663,10 +721,11 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         ) + mapOf(WALLET_NONCE.value to walletNonce)) as MutableMap<String, Any>
         println("authorizationRequestObjectMap: $authorizationRequestObjectMap")
         every { JWSHandler.verify(any(), any()) } returns Unit
-        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to "oauth-authz-req+jwt")
+        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to AUTHZ_REQ_JWT_TYP)
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.PAYLOAD) } returns authorizationRequestObjectMap
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED",
@@ -675,6 +734,7 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             },
             walletNonce = walletNonce,
             walletConfig = walletConfig
+            )
         )
 
         // Mock sendHTTPRequest to return 200 response
@@ -685,9 +745,9 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         } returns NetworkResponse(
             200,
             createAuthorizationRequestObject(ClientIdPrefix.PRE_REGISTERED,
-                authorizationRequestParamsMap as Map<String, String>
+                authorizationRequestParamsMap.mapValues { (_, value) -> value.toString() }
             ).toString(),
-            mapOf("content-type" to listOf("application/oauth-authz-req+jwt")),
+            mapOf(CONTENT_TYPE_HEADER to listOf(AUTHZ_REQ_JWT_CONTENT_TYPE)),
         )
 
         mockHandler.fetchAuthorizationRequest()
@@ -696,19 +756,21 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
                 requestUrl,
                 any(),
                 match { it["wallet_nonce"] == walletNonce && it.containsKey("wallet_metadata") },
-                match { it["accept"] == "application/oauth-authz-req+jwt" && it["content-type"] == "application/x-www-form-urlencoded" }
+                match { it["accept"] == AUTHZ_REQ_JWT_CONTENT_TYPE && it["content-type"] == "application/x-www-form-urlencoded" }
             )
         }
     }
 
     @Test
     fun `should throw error when the client id prefix does not support signed request but the input has signed request via request_uri param`() {
-        val authorizationRequestParamsMap: MutableMap<String, Any> = mutableMapOf(REQUEST_URI.value to "https://example.com/request")
+        val authorizationRequestParamsMap: MutableMap<String, Any> = mutableMapOf(REQUEST_URI.value to EXAMPLE_REQUEST_URI)
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = false,
             isUnsignedRequestSupported = true
+            )
         )
 
         val invalidDataException = assertFailsWith<OpenID4VPExceptions.InvalidData> {
@@ -724,19 +786,21 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
 
     @Test
     fun `should throw error when client id is mismatching in request uri response and authorization request parameters`() {
-        val authorizationRequestParamsMap: MutableMap<String, Any> = mutableMapOf(REQUEST_URI.value to "https://example.com/request")
+        val authorizationRequestParamsMap: MutableMap<String, Any> = mutableMapOf(REQUEST_URI.value to EXAMPLE_REQUEST_URI)
         every { JWSHandler.verify(any(), any()) } returns Unit
-        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to "oauth-authz-req+jwt")
+        every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf("alg" to "EdDSA", "typ" to AUTHZ_REQ_JWT_TYP)
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.PAYLOAD) } returns mutableMapOf(
             CLIENT_ID.value to "mismatching-client-id")
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED",
             extractPublicKey = { _, _ ->
                 mockk<PublicKey>()
             }
+            )
         )
 
         // Mock sendHTTPRequest to return 200 response
@@ -747,9 +811,9 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         } returns NetworkResponse(
             200,
             createAuthorizationRequestObject(ClientIdPrefix.PRE_REGISTERED,
-                authorizationRequestParamsMap as Map<String, String>
+                authorizationRequestParamsMap.mapValues { (_, value) -> value.toString() }
             ).toString(),
-            mapOf("content-type" to listOf("application/oauth-authz-req+jwt")),
+            mapOf(CONTENT_TYPE_HEADER to listOf(AUTHZ_REQ_JWT_CONTENT_TYPE)),
         )
 
         val exception = assertFailsWith<OpenID4VPExceptions.MismatchingClientIDInRequest> {
@@ -781,7 +845,9 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
                 STATE.value to "state-1",
                 DCQL_QUERY.value to dcqlQuery
             ),
+            config = MockHandlerConfig(
             specVersion = SpecVersion.V1
+            )
         )
 
         val request = handler.createAuthorizationRequest() as AuthorizationDcqlRequest
@@ -824,7 +890,9 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
             authorisationRequestListToClientIdSchemeMap[ClientIdPrefix.PRE_REGISTERED]!!,
             clientIdOfPreRegistered + requestParams,
             isSigned = true
-        ) as MutableMap<String, Any>
+        ).mapNotNull { (key, value) ->
+            value?.let { key to (it as Any) }
+        }.toMap().toMutableMap()
         every { JWSHandler.extractDataJsonFromJws(any(), JWSHandler.JwsPart.HEADER) } returns mutableMapOf(
             "alg" to "EdDSA",
             "typ" to "oauth-authz-req+jwt"
@@ -836,10 +904,12 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = true,
             clientIdScheme = "PRE_REGISTERED",
             extractPublicKey = { _, _ -> mockk<PublicKey>() }
+            )
         )
 
         val exception = assertFailsWith<OpenID4VPExceptions.InvalidData> {
@@ -876,10 +946,12 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
 
         val mockHandler = createMockHandler(
             authorizationRequestParameters = authorizationRequestParamsMap,
+            config = MockHandlerConfig(
             isSignedRequestSupported = true,
             isUnsignedRequestSupported = false,
             clientIdScheme = "DID",
             extractPublicKey = { _, _ -> mockk<PublicKey>() }
+            )
         )
 
         val exception = assertFailsWith<OpenID4VPExceptions.InvalidData> {
@@ -892,33 +964,43 @@ class ClientIdSchemeBasedAuthorizationRequestHandlerTest {
         )
     }
 
+    private data class MockHandlerConfig(
+        val walletConfig: WalletConfig? = null,
+        val setResponseDispatchInfo: (ResponseDispatchInfo) -> Unit = {},
+        val walletNonce: String = "walletNonce",
+        val specVersion: SpecVersion = SpecVersion.DRAFT_23,
+        val isSignedRequestSupported: Boolean = true,
+        val isUnsignedRequestSupported: Boolean = true,
+        val clientIdScheme: String = "PRE_REGISTERED",
+        val extractPublicKey: ((SignatureAlgorithm, String?) -> PublicKey)? = null,
+        val confirmSpecVersionIdentifiedFromRequest: Boolean = true
+    )
     private fun createMockHandler(
         authorizationRequestParameters: MutableMap<String, Any>,
-        walletConfig: WalletConfig? = null,
-        setResponseDispatchInfo: (ResponseDispatchInfo) -> Unit = {},
-        walletNonce: String = "walletNonce",
-        specVersion: SpecVersion = SpecVersion.DRAFT_23,
-        isSignedRequestSupported: Boolean = true,
-        isUnsignedRequestSupported: Boolean = true,
-        clientIdScheme: String = "PRE_REGISTERED",
-        extractPublicKey: ((SignatureAlgorithm, String?) -> PublicKey)? = null,
-        confirmSpecVersionIdentifiedFromRequest: Boolean = true
+        config: MockHandlerConfig = MockHandlerConfig()
     ): ClientIdPrefixBasedAuthorizationRequestHandler {
         return object : ClientIdPrefixBasedAuthorizationRequestHandler(
-            clientId = authorizationRequestParameters[CLIENT_ID.value]?.toString() ?: "mock-client",
-            specVersion = specVersion,
+            clientId = authorizationRequestParameters[CLIENT_ID.value]?.toString() ?: MOCK_CLIENT_ID,
+            specVersion = config.specVersion,
             authorizationRequestParameters = authorizationRequestParameters,
-            walletConfig = walletConfig ?: io.mosip.openID4VP.testData.walletConfig,
-            setResponseDispatchInfo = setResponseDispatchInfo,
-            walletNonce = walletNonce
+            walletConfig = config.walletConfig ?: io.mosip.openID4VP.testData.walletConfig,
+            setResponseDispatchInfo = config.setResponseDispatchInfo,
+            walletNonce = config.walletNonce
         ) {
-            override fun isSignedRequestSupported() = isSignedRequestSupported
-            override fun isUnsignedRequestSupported() = isUnsignedRequestSupported
-            override fun clientIdPrefix() = clientIdScheme
-            override fun confirmSpecVersionIdentifiedFromRequest() = confirmSpecVersionIdentifiedFromRequest
-            override fun extractPublicKey(algorithm: SignatureAlgorithm, kid: String?): PublicKey =
-                extractPublicKey?.invoke(algorithm, kid) ?: throw NotImplementedError()
+            override fun isSignedRequestSupported() = config.isSignedRequestSupported
+            override fun isUnsignedRequestSupported() = config.isUnsignedRequestSupported
+            override fun clientIdPrefix() = config.clientIdScheme
+            override fun confirmSpecVersionIdentifiedFromRequest() =
+                config.confirmSpecVersionIdentifiedFromRequest
+
+            override fun extractPublicKey(
+                algorithm: SignatureAlgorithm,
+                kid: String?
+            ): PublicKey =
+                config.extractPublicKey?.invoke(algorithm, kid) ?: throw NotImplementedError()
+
             override fun getWalletMetadata(walletConfig: WalletConfig): Map<String, Any> = mapOf()
         }
     }
 }
+
